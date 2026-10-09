@@ -24,7 +24,7 @@
     </div>
 
     <div class="menu-center">
-      <button class="btn-primary" onclick="window.gameInstance.startMission(window.saveSystem.data.unlockedLevel)">
+      <button class="btn-primary" onclick="startGameMission()">
         ▶ PLAY BATTLE ROYALE
       </button>
       <button class="btn-secondary" onclick="openMissionsModal()">
@@ -69,7 +69,7 @@
       <div id="pickup-notification">+30 Rifle Ammo</div>
 
       <!-- Context-Sensitive Interaction Button -->
-      <button id="btn-interact">
+      <button id="btn-interact" onclick="if(window.gameInstance) window.gameInstance.handlePlayerInteract();">
         <span id="interact-label">INTERACT [E]</span>
       </button>
 
@@ -211,14 +211,21 @@
 
   <script>
     // Menu Helper Functions
+    function startGameMission(lvl) {
+      const level = lvl || (window.saveSystem && window.saveSystem.data ? window.saveSystem.data.unlockedLevel : 1);
+      if (window.gameInstance) {
+        window.gameInstance.startMission(level);
+      }
+    }
+
     function openMissionsModal() {
       const list = document.getElementById('missions-list');
-      const unlocked = window.saveSystem.data.unlockedLevel;
+      const unlocked = window.saveSystem ? window.saveSystem.data.unlockedLevel : 1;
       let html = '';
       window.MISSION_DEFINITIONS.forEach(m => {
         const isLocked = m.level > unlocked;
         html += `<button class="btn-secondary" style="display:flex;justify-content:space-between;${isLocked ? 'opacity:0.5;' : ''}" 
-          ${isLocked ? 'disabled' : `onclick="closeMissionsModal(); window.gameInstance.startMission(${m.level});"`}>
+          ${isLocked ? 'disabled' : `onclick="closeMissionsModal(); startGameMission(${m.level});"`}>
           <span>Level ${m.level}: ${m.title}</span>
           <span>${isLocked ? '🔒 LOCKED' : 'PLAY ▶'}</span>
         </button>`;
@@ -237,17 +244,26 @@
 
     function exitToMainMenu() {
       document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
-      window.gameInstance.isRunning = false;
-      document.getElementById('menu-player-level').textContent = window.saveSystem.data.unlockedLevel;
-      document.getElementById('menu-player-coins').textContent = window.saveSystem.data.coins;
+      if (window.gameInstance) window.gameInstance.isRunning = false;
+      if (window.saveSystem && window.saveSystem.data) {
+        document.getElementById('menu-player-level').textContent = window.saveSystem.data.unlockedLevel;
+        document.getElementById('menu-player-coins').textContent = window.saveSystem.data.coins;
+      }
       window.uiManager.showScreen('screen-menu');
     }
 
     function startNextMission() {
       document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
-      const nextLvl = Math.min(5, window.gameInstance.currentLevel + 1);
-      window.gameInstance.startMission(nextLvl);
+      const nextLvl = Math.min(5, (window.gameInstance ? window.gameInstance.currentLevel : 1) + 1);
+      startGameMission(nextLvl);
     }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.saveSystem && window.saveSystem.data) {
+        document.getElementById('menu-player-level').textContent = window.saveSystem.data.unlockedLevel;
+        document.getElementById('menu-player-coins').textContent = window.saveSystem.data.coins;
+      }
+    });
   </script>
 </body>
 </html>

@@ -258,6 +258,17 @@ class PlayerController {
       window.audio.playExplosion();
     }
 
+    // Check roadkill against enemy bots
+    if (Math.abs(this.vehicleSpeed) > 5.0 && window.gameInstance && window.gameInstance.enemyManager) {
+      window.gameInstance.enemyManager.bots.forEach(b => {
+        if (!b.isDead && v.position.distanceTo(b.position) < 2.6) {
+          b.takeDamage(150, false);
+          window.audio.playExplosion();
+          if (window.uiManager) window.uiManager.showNotification('💥 Vehicle Roadkill Elimination!');
+        }
+      });
+    }
+
     // Match player position inside vehicle
     this.position.copy(v.position);
     this.character.root.position.copy(v.position);
@@ -458,25 +469,40 @@ class PlayerController {
 
   updateThirdPersonCamera(delta) {
     // Over-the-shoulder third-person camera positioning
-    const targetDist = this.isAiming ? 2.4 : (this.inVehicle ? 6.5 : this.cameraDistance);
+    const targetDist = this.isAiming ? 2.2 : (this.inVehicle ? 6.5 : this.cameraDistance);
     const targetHeight = this.inVehicle ? 3.2 : this.cameraHeight;
-    const targetSide = this.isAiming ? 0.75 : (this.inVehicle ? 0.0 : this.cameraOffsetSide);
+    const targetSide = this.isAiming ? 0.7 : (this.inVehicle ? 0.0 : this.cameraOffsetSide);
 
     // Compute camera position relative to player
     const pitch = this.cameraPitch + this.recoilPitch;
     const yaw = this.cameraYaw;
 
-    const offset = new THREE.Vector3(
-      Math.sin(yaw) * targetDist * Math.cos(pitch) + Math.cos(yaw) * targetSide,
-      targetHeight + Math.sin(pitch) * targetDist,
-      Math.cos(yaw) * targetDist * Math.cos(pitch) - Math.sin(yaw) * targetSide
+    // Aim forward direction unit vector
+    const aimDir = new THREE.Vector3(
+      -Math.sin(yaw) * Math.cos(pitch),
+      Math.sin(pitch),
+      -Math.cos(yaw) * Math.cos(pitch)
     );
 
-    const desiredCamPos = this.position.clone().add(offset);
-    this.camera.position.lerp(desiredCamPos, 0.25);
+    // Camera right vector for shoulder offset
+    const rightDir = new THREE.Vector3(
+      Math.cos(yaw),
+      0,
+      -Math.sin(yaw)
+    );
 
-    // Look target
-    const lookTarget = this.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+    // Head position
+    const headPos = this.position.clone().add(new THREE.Vector3(0, targetHeight, 0));
+
+    // Place camera behind player head along -aimDir and offset to right shoulder
+    const desiredCamPos = headPos.clone()
+      .sub(aimDir.clone().multiplyScalar(targetDist))
+      .add(rightDir.clone().multiplyScalar(targetSide));
+
+    this.camera.position.lerp(desiredCamPos, 0.35);
+
+    // Look target far ahead along the aim direction so the crosshair points where bullets hit!
+    const lookTarget = headPos.clone().add(aimDir.clone().multiplyScalar(60.0));
     this.camera.lookAt(lookTarget);
   }
 }

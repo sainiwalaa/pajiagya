@@ -282,6 +282,7 @@ body, html {
   border: 2px solid #fff;
   cursor: pointer;
   pointer-events: auto;
+  z-index: 25;
   display: none;
   box-shadow: 0 0 12px rgba(255, 152, 0, 0.6);
 }
@@ -299,6 +300,7 @@ body, html {
   flex-direction: column;
   gap: 10px;
   pointer-events: auto;
+  z-index: 25;
 }
 
 .power-btn {
@@ -334,6 +336,8 @@ body, html {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  pointer-events: none;
+  z-index: 25;
 }
 
 /* Health & Weapon Card */
@@ -411,6 +415,7 @@ body, html {
   border: 2px solid rgba(255, 184, 0, 0.5);
   background: rgba(255, 255, 255, 0.05);
   pointer-events: auto;
+  z-index: 25;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -432,6 +437,7 @@ body, html {
   bottom: 0;
   width: 55%;
   pointer-events: auto;
+  z-index: 5;
 }
 
 /* Mobile Combat Action Cluster (Bottom Right) */

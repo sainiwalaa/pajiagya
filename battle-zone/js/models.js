@@ -30,9 +30,9 @@ const ModelFactory = {
 
   createSoldier(isPlayer = true) {
     const root = new THREE.Group();
-    const bodyMat = isPlayer ? this.materials.playerBody : this.materials.botBody;
-    const armorMat = isPlayer ? this.materials.playerArmor : this.materials.botArmor;
-    const visorMat = isPlayer ? this.materials.playerVisor : this.materials.botVisor;
+    const bodyMat = (isPlayer ? this.materials.playerBody : this.materials.botBody).clone();
+    const armorMat = (isPlayer ? this.materials.playerArmor : this.materials.botArmor).clone();
+    const visorMat = (isPlayer ? this.materials.playerVisor : this.materials.botVisor).clone();
 
     // Pelvis / Hips (Root pivot)
     const hips = new THREE.Group();

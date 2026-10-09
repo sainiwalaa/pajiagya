@@ -62,6 +62,7 @@ class BattleZoneGame {
   }
 
   startMission(levelNumber = 1) {
+    const wasRunning = this.isRunning;
     this.currentLevel = levelNumber;
     window.audio.init();
 
@@ -92,13 +93,16 @@ class BattleZoneGame {
     this.enemyManager.spawnMissionEnemies(mission);
 
     this.bulletTracers = [];
+    this.clock.getDelta(); // reset clock delta to prevent jump
     this.isRunning = true;
 
     // Show in-game HUD
     window.uiManager.showScreen('screen-game');
     window.uiManager.showNotification(`Loaded ${mission.title}! Ready for combat.`);
 
-    this.loop();
+    if (!wasRunning) {
+      this.loop();
+    }
   }
 
   loop() {
@@ -207,13 +211,16 @@ class BattleZoneGame {
           // Apply loot reward
           if (loot.type.includes('ammo')) {
             this.player.inventory.ammo556 += 45;
-            window.uiManager.showNotification('+45 5.56mm Ammo Collected');
+            window.uiManager.showNotification('+45 Rifle Ammo Collected');
           } else if (loot.type === 'medkit') {
             this.player.inventory.medkits += 1;
             window.uiManager.showNotification('+1 Tactical Medkit Collected');
           } else if (loot.type === 'energy_drink') {
             this.player.inventory.energyDrinks += 1;
             window.uiManager.showNotification('+1 Energy Drink Collected');
+          } else if (loot.type.includes('armor')) {
+            this.player.armor = 100;
+            window.uiManager.showNotification('+Body Armor Restored to 100%!');
           } else if (loot.type === 'sniper') {
             this.player.inventory.secondary = 'sniper';
             window.uiManager.showNotification('Equipped AWM-50 Sniper Rifle!');
@@ -231,7 +238,7 @@ class BattleZoneGame {
   }
 
   handlePlayerShot(raycaster, weapon) {
-    // Check hit against bots
+    // 1. Gather all shootable bot meshes
     const botMeshes = [];
     const botMap = new Map();
 
@@ -246,7 +253,20 @@ class BattleZoneGame {
       }
     });
 
-    const intersects = raycaster.intersectObjects(botMeshes, false);
+    // 2. Gather solid obstacle meshes (walls, rocks, buildings) for line-of-sight blocking
+    const obstacleMeshes = [];
+    if (this.scene) {
+      this.scene.traverse(child => {
+        if (child.isMesh && child.name && !botMap.has(child) && child !== this.player.character.root) {
+          if (child.parent && child.parent.name && (child.parent.name.includes('building') || child.parent.name.includes('vehicle') || child.parent.name.includes('crate'))) {
+            obstacleMeshes.push(child);
+          }
+        }
+      });
+    }
+
+    const allTargets = [...botMeshes, ...obstacleMeshes];
+    const intersects = raycaster.intersectObjects(allTargets, false);
     const startPos = this.player.character.muzzle.getWorldPosition(new THREE.Vector3());
 
     if (intersects.length > 0) {
@@ -254,14 +274,18 @@ class BattleZoneGame {
       const bot = botMap.get(hit.object);
 
       if (bot) {
-        const isHeadshot = hit.point.y - bot.position.y > 1.35;
+        // Hit enemy bot!
+        const isHeadshot = (hit.point.y - bot.position.y) > 1.35;
         bot.takeDamage(weapon.damage, isHeadshot);
         window.audio.playHitMarker(isHeadshot);
+        this.spawnBulletTracer(startPos, hit.point, 0xffeb3b);
+      } else {
+        // Hit a solid wall / obstacle
+        window.audio.playHitMarker(false);
+        this.spawnBulletTracer(startPos, hit.point, 0xff7043);
       }
-
-      this.spawnBulletTracer(startPos, hit.point, 0xffeb3b);
     } else {
-      // Bullet travels to max range
+      // Bullet travels to max range along ray direction
       const endPos = startPos.clone().add(raycaster.ray.direction.clone().multiplyScalar(weapon.range));
       this.spawnBulletTracer(startPos, endPos, 0xffeb3b);
     }

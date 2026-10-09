@@ -75,8 +75,22 @@ class InputManager {
     });
 
     // Mouse Controls
+    let isMouseDown = false;
+    let mouseLastX = 0;
+    let mouseLastY = 0;
+
     window.addEventListener('mousedown', (e) => {
-      if (e.target.closest('#hud') || e.target.closest('.modal')) return;
+      if (e.target.closest('#hud button') || e.target.closest('.modal') || e.target.closest('#screen-menu')) return;
+
+      isMouseDown = true;
+      mouseLastX = e.clientX;
+      mouseLastY = e.clientY;
+
+      // Try requesting pointer lock on desktop when clicking canvas
+      const container = document.getElementById('canvas-container');
+      if (container && !document.pointerLockElement && e.button === 0) {
+        try { container.requestPointerLock(); } catch (_) {}
+      }
 
       if (e.button === 0) { // Left Click = Fire
         this.fire = true;
@@ -87,17 +101,25 @@ class InputManager {
     });
 
     window.addEventListener('mouseup', (e) => {
+      isMouseDown = false;
       if (e.button === 0) this.fire = false;
       if (e.button === 2) this.aim = false;
     });
 
     window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    // Pointer Lock for FPS mouse look
-    document.addEventListener('mousemove', (e) => {
+    // Mouse move handling (both pointer lock and drag-to-look)
+    window.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement) {
         this.lookDeltaX += e.movementX;
         this.lookDeltaY += e.movementY;
+      } else if (isMouseDown) {
+        const dx = e.clientX - mouseLastX;
+        const dy = e.clientY - mouseLastY;
+        mouseLastX = e.clientX;
+        mouseLastY = e.clientY;
+        this.lookDeltaX += dx * 1.4;
+        this.lookDeltaY += dy * 1.4;
       }
     });
   }

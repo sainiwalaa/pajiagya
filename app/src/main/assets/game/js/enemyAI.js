@@ -102,17 +102,20 @@ class EnemyBot {
   }
 
   hasLineOfSight(targetPos) {
-    // Simple line segment ray test against map colliders
+    // Ray test against map colliders
     const from = this.position.clone().add(new THREE.Vector3(0, 1.4, 0));
     const to = targetPos.clone().add(new THREE.Vector3(0, 1.4, 0));
-    const ray = new THREE.Ray(from, to.clone().sub(from).normalize());
     const dist = from.distanceTo(to);
+    const ray = new THREE.Ray(from, to.clone().sub(from).normalize());
 
     for (let i = 0; i < this.map.colliders.length; i++) {
       const box = this.map.colliders[i];
       const intersect = ray.intersectBox(box, new THREE.Vector3());
-      if (intersect && from.distanceTo(intersect) < dist - 0.5) {
-        return false; // Obstructed by wall or building
+      if (intersect) {
+        const hitDist = from.distanceTo(intersect);
+        if (hitDist > 0.8 && hitDist < dist - 0.8) {
+          return false; // Obstructed by wall or building
+        }
       }
     }
     return true;
@@ -151,8 +154,21 @@ class EnemyBot {
 
     if (!this.map.checkCollision(nextPos, 0.45)) {
       this.position.copy(nextPos);
-      this.character.root.rotation.y = Math.atan2(dir.x, dir.z);
+    } else {
+      // Slide around obstacle
+      const testX = this.position.clone();
+      testX.x += move.x;
+      if (!this.map.checkCollision(testX, 0.45)) {
+        this.position.x = testX.x;
+      } else {
+        const testZ = this.position.clone();
+        testZ.z += move.z;
+        if (!this.map.checkCollision(testZ, 0.45)) {
+          this.position.z = testZ.z;
+        }
+      }
     }
+    this.character.root.rotation.y = Math.atan2(dir.x, dir.z);
 
     const swing = Math.sin(this.animTime * 1.5);
     this.character.leftLegPivot.rotation.x = swing * 0.6;
@@ -224,10 +240,12 @@ class EnemyBot {
     this.character.root.rotation.x = -Math.PI / 2;
     this.character.root.position.y = 0.2;
 
-    // Spawn 3D Death Loot Crate
-    const drop = ModelFactory.createSupplyCrate(false);
-    drop.position.set(this.position.x, 0, this.position.z);
-    this.scene.add(drop);
+    // Spawn collectible 3D loot drop
+    if (this.map) {
+      const dropTypes = ['ammo_556', 'medkit', 'energy_drink'];
+      const chosenType = dropTypes[Math.floor(Math.random() * dropTypes.length)];
+      this.map.addLoot(this.position.x, 0.4, this.position.z, chosenType);
+    }
 
     // Notify game engine
     if (window.gameInstance) {
