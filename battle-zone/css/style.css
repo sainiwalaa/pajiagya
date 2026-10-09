@@ -1,0 +1,535 @@
+/* Battle Zone: Survival - Styling & Tactical HUD */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #0d1117;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #f0f4f8;
+}
+
+#canvas-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+/* Screens Management */
+.screen {
+  display: none;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* MAIN MENU SCREEN */
+#screen-menu {
+  flex-direction: column;
+  justify-content: space-between;
+  background: radial-gradient(circle at center, #1b2838 0%, #0a0e14 100%);
+  padding: 24px;
+}
+
+.menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.menu-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-badge {
+  background: #ffb800;
+  color: #000;
+  font-weight: 900;
+  font-size: 20px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  letter-spacing: 1px;
+}
+
+.logo-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #fff;
+}
+
+.player-profile-pill {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 184, 0, 0.4);
+}
+
+.coin-badge {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.menu-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 380px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 16px 24px;
+  background: #ffb800;
+  color: #000;
+  border: none;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255, 184, 0, 0.4);
+  transition: transform 0.1s, background 0.2s;
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+  background: #e6a600;
+}
+
+.btn-secondary {
+  width: 100%;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.menu-footer {
+  text-align: center;
+  color: #90a4ae;
+  font-size: 12px;
+}
+
+/* IN-GAME HUD */
+#hud {
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 20;
+}
+
+/* Top Bar: Compass, Objective, Minimap */
+.hud-top {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.compass-bar {
+  background: rgba(15, 20, 26, 0.85);
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 184, 0, 0.5);
+  color: #ffd54f;
+  font-weight: bold;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.objective-box {
+  background: rgba(15, 20, 26, 0.85);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  max-width: 240px;
+}
+
+.obj-title {
+  font-size: 11px;
+  color: #ffb800;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.obj-item {
+  font-size: 11px;
+  color: #cfd8dc;
+  display: flex;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.obj-item.done {
+  color: #81c784;
+}
+
+.minimap-box {
+  width: 95px;
+  height: 95px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #ffb800;
+  background: rgba(15, 20, 26, 0.85);
+}
+
+#minimap-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* Center Crosshair */
+.crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+}
+
+.crosshair::before, .crosshair::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.crosshair::before {
+  top: 11px;
+  left: 0;
+  width: 24px;
+  height: 2px;
+}
+
+.crosshair::after {
+  top: 0;
+  left: 11px;
+  width: 2px;
+  height: 24px;
+}
+
+/* Pickup Notification */
+#pickup-notification {
+  position: absolute;
+  top: 75px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 40, 50, 0.9);
+  border: 1px solid #ffb800;
+  color: #ffd54f;
+  padding: 6px 16px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+#pickup-notification.visible {
+  opacity: 1;
+}
+
+/* Context-Sensitive Interaction Button */
+#btn-interact {
+  position: absolute;
+  top: 45%;
+  right: 28px;
+  background: #ff9800;
+  color: #000;
+  font-weight: 900;
+  font-size: 12px;
+  padding: 10px 16px;
+  border-radius: 20px;
+  border: 2px solid #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  display: none;
+  box-shadow: 0 0 12px rgba(255, 152, 0, 0.6);
+}
+
+#btn-interact.visible {
+  display: block;
+}
+
+/* Powers Bar (Right Mid) */
+.powers-cluster {
+  position: absolute;
+  right: 18px;
+  top: 30%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.power-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(33, 47, 61, 0.85);
+  border: 2px solid #00e5ff;
+  color: #fff;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.power-btn.active {
+  background: #00e5ff;
+  color: #000;
+}
+
+.power-btn.cooldown {
+  opacity: 0.4;
+  border-color: #78909c;
+}
+
+/* Bottom Bar: Health, Ammo & Controls */
+.hud-bottom {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+/* Health & Weapon Card */
+.player-status-card {
+  background: rgba(15, 20, 26, 0.85);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 220px;
+}
+
+.bar-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+#bar-armor {
+  width: 100%;
+  height: 100%;
+  background: #00b0ff;
+}
+
+#bar-health {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  transition: width 0.1s;
+}
+
+#bar-health.low {
+  background: #ff1744;
+}
+
+.weapon-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+#weapon-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: #4fc3f7;
+}
+
+.ammo-display {
+  font-weight: bold;
+}
+
+#ammo-cur {
+  font-size: 18px;
+  color: #fff;
+}
+
+#ammo-total {
+  font-size: 12px;
+  color: #90a4ae;
+}
+
+/* Mobile Virtual Joystick & Touch Zones */
+#joystick-zone {
+  position: absolute;
+  bottom: 25px;
+  left: 25px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 184, 0, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#joystick-knob {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #ffb800;
+  box-shadow: 0 0 10px rgba(255, 184, 0, 0.6);
+  pointer-events: none;
+}
+
+#look-zone {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 55%;
+  pointer-events: auto;
+}
+
+/* Mobile Combat Action Cluster (Bottom Right) */
+.action-cluster {
+  display: grid;
+  grid-template-columns: repeat(3, 48px);
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.action-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(40, 55, 71, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+#btn-fire {
+  grid-column: span 2;
+  width: 106px;
+  height: 54px;
+  border-radius: 27px;
+  background: #d32f2f;
+  border: 2px solid #ffd54f;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+/* MODALS */
+.modal {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 50;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.active {
+  display: flex;
+}
+
+.modal-content {
+  background: #17202a;
+  border: 2px solid #ffb800;
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+}
+
+.modal-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffb800;
+  margin-bottom: 12px;
+}
+
+.inv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.inv-slot {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+}
+
+.inv-icon {
+  font-size: 24px;
+}
+
+.inv-name {
+  font-size: 11px;
+  color: #fff;
+  margin-top: 4px;
+}
+
+.inv-count {
+  font-size: 10px;
+  color: #ffd54f;
+}

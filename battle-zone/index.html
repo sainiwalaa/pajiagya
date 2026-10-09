@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>BATTLE ZONE: SURVIVAL</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 3D Canvas Viewport -->
+  <div id="canvas-container"></div>
+
+  <!-- SCREEN 1: MAIN MENU -->
+  <div id="screen-menu" class="screen active">
+    <div class="menu-header">
+      <div class="menu-logo">
+        <div class="logo-badge">3D</div>
+        <div class="logo-title">BATTLE ZONE: SURVIVAL</div>
+      </div>
+      <div class="player-profile-pill">
+        <span>🎖️ Level <span id="menu-player-level">1</span></span>
+        <span class="coin-badge">💰 <span id="menu-player-coins">500</span> BP</span>
+      </div>
+    </div>
+
+    <div class="menu-center">
+      <button class="btn-primary" onclick="window.gameInstance.startMission(window.saveSystem.data.unlockedLevel)">
+        ▶ PLAY BATTLE ROYALE
+      </button>
+      <button class="btn-secondary" onclick="openMissionsModal()">
+        🎯 MISSIONS & LEVELS (1-5)
+      </button>
+      <button class="btn-secondary" onclick="window.uiManager.toggleInventory()">
+        🎒 LOADOUT & WEAPONS
+      </button>
+      <button class="btn-secondary" onclick="openSettingsModal()">
+        ⚙️ SETTINGS
+      </button>
+    </div>
+
+    <div class="menu-footer">
+      <span>Battle Zone: Survival v1.0.0 • GitHub Pages Edition • WebGL 3D</span>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: IN-GAME HUD -->
+  <div id="screen-game" class="screen">
+    <div id="hud">
+      <!-- Top HUD: Compass, Objective, Minimap -->
+      <div class="hud-top">
+        <div class="objective-box">
+          <div class="obj-title">TACTICAL OBJECTIVES</div>
+          <div id="objective-list"></div>
+        </div>
+
+        <div class="compass-bar">
+          <span id="compass-text">0° N</span>
+        </div>
+
+        <div class="minimap-box">
+          <canvas id="minimap-canvas" width="95" height="95"></canvas>
+        </div>
+      </div>
+
+      <!-- Center Crosshair -->
+      <div class="crosshair"></div>
+
+      <!-- Notification Toast -->
+      <div id="pickup-notification">+30 Rifle Ammo</div>
+
+      <!-- Context-Sensitive Interaction Button -->
+      <button id="btn-interact">
+        <span id="interact-label">INTERACT [E]</span>
+      </button>
+
+      <!-- Tactical Power Abilities -->
+      <div class="powers-cluster">
+        <button id="btn-power-speed" class="power-btn" onclick="window.gameInstance.player.activatePower('speedBoost')">⚡</button>
+        <button id="btn-power-shield" class="power-btn" onclick="window.gameInstance.player.activatePower('energyShield')">🛡️</button>
+        <button id="btn-power-scan" class="power-btn" onclick="window.gameInstance.player.activatePower('enemyScanner')">📡</button>
+      </div>
+
+      <!-- Bottom HUD: Status & Actions -->
+      <div class="hud-bottom">
+        <!-- Player Status Card -->
+        <div class="player-status-card">
+          <div class="bar-container">
+            <div id="bar-armor"></div>
+          </div>
+          <div class="bar-container">
+            <div id="bar-health"></div>
+          </div>
+          <div class="weapon-info">
+            <span id="weapon-name">M4 Tactical Rifle</span>
+            <div class="ammo-display">
+              <span id="ammo-cur">30</span>
+              <span id="ammo-total">/ 30</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Touch Action Cluster -->
+        <div class="action-cluster">
+          <button id="btn-reload" class="action-btn">RELOAD</button>
+          <button id="btn-aim" class="action-btn">AIM</button>
+          <button id="btn-jump" class="action-btn">JUMP</button>
+          <button id="btn-crouch" class="action-btn">CROUCH</button>
+          <button id="btn-sprint" class="action-btn">SPRINT</button>
+          <button id="btn-fire" class="action-btn">FIRE</button>
+        </div>
+      </div>
+
+      <!-- Virtual Joystick Touch Zone -->
+      <div id="joystick-zone">
+        <div id="joystick-knob"></div>
+      </div>
+
+      <!-- Drag Camera Look Touch Zone -->
+      <div id="look-zone"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: INVENTORY -->
+  <div id="modal-inventory" class="modal">
+    <div class="modal-content">
+      <div class="modal-title">TACTICAL BACKPACK</div>
+      <p style="color:#90a4ae;font-size:12px;">Tap an item to consume or equip.</p>
+      <div id="inventory-grid" class="inv-grid"></div>
+      <button class="btn-primary" onclick="window.uiManager.toggleInventory()">CLOSE BACKPACK</button>
+    </div>
+  </div>
+
+  <!-- MODAL: MISSIONS & LEVEL SELECT -->
+  <div id="modal-missions" class="modal">
+    <div class="modal-content">
+      <div class="modal-title">MISSION SELECTION (1-5)</div>
+      <div id="missions-list" style="display:flex;flex-direction:column;gap:8px;margin:14px 0;"></div>
+      <button class="btn-secondary" onclick="closeMissionsModal()">BACK TO MENU</button>
+    </div>
+  </div>
+
+  <!-- MODAL: SETTINGS -->
+  <div id="modal-settings" class="modal">
+    <div class="modal-content">
+      <div class="modal-title">GAME SETTINGS</div>
+      <div style="text-align:left;margin:14px 0;font-size:13px;display:flex;flex-direction:column;gap:12px;">
+        <label>Camera Sensitivity:
+          <input type="range" id="setting-sens" min="0.5" max="2.5" step="0.1" value="1.0" onchange="window.saveSystem.updateSettings({sensitivity: parseFloat(this.value)})">
+        </label>
+        <label>Audio Effects:
+          <input type="checkbox" id="setting-audio" checked onchange="window.audio.muted = !this.checked"> Enabled
+        </label>
+      </div>
+      <button class="btn-primary" onclick="document.getElementById('modal-settings').classList.remove('active')">SAVE & CLOSE</button>
+    </div>
+  </div>
+
+  <!-- MODAL: PAUSE -->
+  <div id="modal-pause" class="modal">
+    <div class="modal-content">
+      <div class="modal-title">GAME PAUSED</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin:14px 0;">
+        <button class="btn-primary" onclick="window.uiManager.togglePauseMenu()">RESUME</button>
+        <button class="btn-secondary" onclick="window.gameInstance.startMission(window.gameInstance.currentLevel)">RESTART MISSION</button>
+        <button class="btn-secondary" onclick="exitToMainMenu()">EXIT TO MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VICTORY SCREEN -->
+  <div id="modal-victory" class="modal">
+    <div class="modal-content">
+      <div class="modal-title" id="victory-title" style="color:#76ff03;">MISSION COMPLETE!</div>
+      <p style="color:#cfd8dc;font-size:14px;margin-bottom:12px;">Area secured. All objectives fulfilled.</p>
+      <div style="display:flex;justify-content:space-around;background:rgba(255,255,255,0.08);padding:12px;border-radius:8px;margin-bottom:16px;">
+        <div>XP EARNED: <span id="victory-xp" style="color:#ffd54f;font-weight:bold;">+400</span></div>
+        <div>COINS: <span id="victory-coins" style="color:#ffd54f;font-weight:bold;">+250</span></div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-secondary" onclick="exitToMainMenu()">MENU</button>
+        <button class="btn-primary" onclick="startNextMission()">NEXT LEVEL ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GAME OVER -->
+  <div id="modal-gameover" class="modal">
+    <div class="modal-content" style="border-color:#ff1744;">
+      <div class="modal-title" style="color:#ff1744;">ELIMINATED</div>
+      <p id="gameover-reason" style="color:#cfd8dc;font-size:13px;margin-bottom:16px;">Defeated in battle.</p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-secondary" onclick="exitToMainMenu()">MENU</button>
+        <button class="btn-primary" onclick="window.gameInstance.startMission(window.gameInstance.currentLevel)">REDEPLOY</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="js/lib/three.min.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/saveSystem.js"></script>
+  <script src="js/weapons.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/enemyAI.js"></script>
+  <script src="js/missions.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+
+  <script>
+    // Menu Helper Functions
+    function openMissionsModal() {
+      const list = document.getElementById('missions-list');
+      const unlocked = window.saveSystem.data.unlockedLevel;
+      let html = '';
+      window.MISSION_DEFINITIONS.forEach(m => {
+        const isLocked = m.level > unlocked;
+        html += `<button class="btn-secondary" style="display:flex;justify-content:space-between;${isLocked ? 'opacity:0.5;' : ''}" 
+          ${isLocked ? 'disabled' : `onclick="closeMissionsModal(); window.gameInstance.startMission(${m.level});"`}>
+          <span>Level ${m.level}: ${m.title}</span>
+          <span>${isLocked ? '🔒 LOCKED' : 'PLAY ▶'}</span>
+        </button>`;
+      });
+      list.innerHTML = html;
+      document.getElementById('modal-missions').classList.add('active');
+    }
+
+    function closeMissionsModal() {
+      document.getElementById('modal-missions').classList.remove('active');
+    }
+
+    function openSettingsModal() {
+      document.getElementById('modal-settings').classList.add('active');
+    }
+
+    function exitToMainMenu() {
+      document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+      window.gameInstance.isRunning = false;
+      document.getElementById('menu-player-level').textContent = window.saveSystem.data.unlockedLevel;
+      document.getElementById('menu-player-coins').textContent = window.saveSystem.data.coins;
+      window.uiManager.showScreen('screen-menu');
+    }
+
+    function startNextMission() {
+      document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+      const nextLvl = Math.min(5, window.gameInstance.currentLevel + 1);
+      window.gameInstance.startMission(nextLvl);
+    }
+  </script>
+</body>
+</html>

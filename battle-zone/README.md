@@ -1,6 +1,6 @@
 # BATTLE ZONE: SURVIVAL
 
-A complete, playable, third-person 3D Battle Royale survival game built with **Three.js**, **WebGL**, **HTML5**, **JavaScript**, and **Android**.
+A complete, playable, third-person 3D Battle Royale survival game built with **Three.js**, **WebGL**, **HTML5**, and **JavaScript**.
 
 ---
 
@@ -96,3 +96,27 @@ A complete, playable, third-person 3D Battle Royale survival game built with **T
    - Under **Build and deployment** -> **Source**, select `Deploy from a branch`.
    - Under **Branch**, select `main` / `root` and click **Save**.
 4. Your game will be live at `https://YOUR_USERNAME.github.io/battle-zone-survival/`!
+
+---
+
+## 📁 Project Structure
+
+```
+├── index.html           # Main HTML entry point & UI overlay
+├── css/
+│   └── style.css        # Responsive styling & tactical HUD layout
+└── js/
+    ├── lib/
+    │   └── three.min.js # Bundled offline Three.js r128 engine
+    ├── audio.js         # Procedural Web Audio API sound synthesizer
+    ├── saveSystem.js    # LocalStorage progression & settings manager
+    ├── weapons.js       # Weapon definitions & combat ballistics
+    ├── models.js        # Procedural 3D meshes (Soldier, Weapons, Buggy, Buildings)
+    ├── map.js           # 3D open world battleground generator & colliders
+    ├── player.js        # Third-person controller, camera follow, driving
+    ├── enemyAI.js       # Dynamic location-based AI bots
+    ├── missions.js      # 5 playable levels, objectives & rewards
+    ├── input.js         # Unified mobile touch & desktop controls
+    ├── ui.js            # HUD, minimap radar, compass, inventory modals
+    └── game.js          # Main coordinator & 60 FPS WebGL render loop
+```
