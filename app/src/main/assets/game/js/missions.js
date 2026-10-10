@@ -116,10 +116,23 @@ class MissionManager {
   loadLevel(levelNumber) {
     const found = MISSION_DEFINITIONS.find(m => m.level === levelNumber) || MISSION_DEFINITIONS[0];
     this.currentLevel = found.level;
-    // Deep clone objectives
-    this.currentMission = JSON.parse(JSON.stringify(found));
-    // Restore Vector3
-    this.currentMission.targetLocation = found.targetLocation.clone();
+    this.currentMission = {
+      level: found.level,
+      id: found.id,
+      title: found.title,
+      briefing: found.briefing,
+      targetLocation: found.targetLocation ? found.targetLocation.clone() : new THREE.Vector3(0, 0, 0),
+      targetName: found.targetName,
+      objectives: found.objectives.map(o => ({ ...o, current: 0 })),
+      rewards: { ...found.rewards },
+      enemySpawns: (found.enemySpawns || []).map(e => ({
+        name: e.name,
+        loc: e.loc,
+        pos: e.pos && typeof e.pos.clone === 'function'
+          ? e.pos.clone()
+          : new THREE.Vector3(e.pos ? e.pos.x : 0, e.pos ? (e.pos.y || 0) : 0, e.pos ? e.pos.z : 0)
+      }))
+    };
     return this.currentMission;
   }
 

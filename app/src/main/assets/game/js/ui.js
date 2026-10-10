@@ -242,9 +242,35 @@ class UIManager {
     const modal = document.getElementById('modal-inventory');
     if (!modal) return;
     const isVis = modal.classList.toggle('active');
-    if (isVis && window.gameInstance && window.gameInstance.player) {
-      this.populateInventory(window.gameInstance.player);
+    if (isVis) {
+      if (window.gameInstance && window.gameInstance.player) {
+        this.populateInventory(window.gameInstance.player);
+      } else {
+        this.populateDefaultInventory();
+      }
     }
+  }
+
+  populateDefaultInventory() {
+    const grid = document.getElementById('inventory-grid');
+    if (!grid) return;
+    const items = [
+      { name: 'Primary: M4 Tactical Rifle', count: '30/30', icon: '🔫' },
+      { name: 'Secondary: P9 Sidearm', count: '15/15', icon: '🔫' },
+      { name: 'Medkit (+75 HP)', count: 'x3', icon: '💊' },
+      { name: 'Energy Drink (+50 Armor)', count: 'x2', icon: '⚡' },
+      { name: '5.56mm Ammo', count: '120 rds', icon: '📦' },
+      { name: 'Body Armor', count: '100%', icon: '🛡️' }
+    ];
+    let html = '';
+    items.forEach(it => {
+      html += `<div class="inv-slot">
+        <div class="inv-icon">${it.icon}</div>
+        <div class="inv-name">${it.name}</div>
+        <div class="inv-count">${it.count}</div>
+      </div>`;
+    });
+    grid.innerHTML = html;
   }
 
   populateInventory(player) {

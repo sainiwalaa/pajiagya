@@ -117,8 +117,8 @@ fun BattleZoneWebView(onWebViewCreated: (WebView) -> Unit) {
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
 
-                // High-performance hardware acceleration
-                setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                // Standard direct composition layer (avoids Mesa DRI rendernode crashes in emulator environments)
+                setLayerType(View.LAYER_TYPE_NONE, null)
                 isHapticFeedbackEnabled = true
                 isSoundEffectsEnabled = true
 
@@ -132,10 +132,26 @@ fun BattleZoneWebView(onWebViewCreated: (WebView) -> Unit) {
                     useWideViewPort = true
                     loadWithOverviewMode = true
                     cacheMode = WebSettings.LOAD_DEFAULT
+                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 }
 
-                webViewClient = WebViewClient()
-                webChromeClient = WebChromeClient()
+                webViewClient = object : WebViewClient() {
+                    override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                        super.onReceivedError(view, errorCode, description, failingUrl)
+                        android.util.Log.e("BattleZoneWeb", "WebView error: $description ($errorCode) at $failingUrl")
+                    }
+                }
+                webChromeClient = object : WebChromeClient() {
+                    override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                        val msg = "${consoleMessage?.message()} [${consoleMessage?.sourceId()}:${consoleMessage?.lineNumber()}]"
+                        when (consoleMessage?.messageLevel()) {
+                            android.webkit.ConsoleMessage.MessageLevel.ERROR -> android.util.Log.e("BattleZoneWeb", msg)
+                            android.webkit.ConsoleMessage.MessageLevel.WARNING -> android.util.Log.w("BattleZoneWeb", msg)
+                            else -> android.util.Log.d("BattleZoneWeb", msg)
+                        }
+                        return true
+                    }
+                }
 
                 addJavascriptInterface(AndroidHapticBridge(ctx), "AndroidBridge")
 

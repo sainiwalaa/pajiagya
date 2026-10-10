@@ -30,52 +30,63 @@ class AudioManager {
 
   playGunshot(weaponType = 'rifle') {
     if (!this.ctx || this.muted) return;
-    this.resume();
+    try {
+      this.resume();
 
-    const now = this.ctx.currentTime;
-    const dur = weaponType === 'sniper' ? 0.35 : weaponType === 'shotgun' ? 0.28 : 0.12;
+      const now = this.ctx.currentTime;
+      const dur = weaponType === 'sniper' ? 0.35 : weaponType === 'shotgun' ? 0.28 : 0.12;
 
-    // Noise burst for explosive bang
-    const bufferSize = this.ctx.sampleRate * dur;
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
-    }
+      // Noise burst for explosive bang
+      if (this.ctx.createBuffer && this.ctx.sampleRate) {
+        const bufferSize = Math.floor(this.ctx.sampleRate * dur);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
+        }
 
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = buffer;
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
 
-    // Filter
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(weaponType === 'sniper' ? 1200 : 2200, now);
-    filter.frequency.exponentialRampToValueAtTime(150, now + dur);
+        // Filter
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(weaponType === 'sniper' ? 1200 : 2200, now);
+        filter.frequency.exponentialRampToValueAtTime(150, now + dur);
 
-    // Punch tone
-    const osc = this.ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(weaponType === 'sniper' ? 180 : 320, now);
-    osc.frequency.exponentialRampToValueAtTime(40, now + dur);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(weaponType === 'sniper' ? 1.0 : 0.7, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
 
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(weaponType === 'sniper' ? 1.0 : 0.7, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
 
-    noise.connect(filter);
-    filter.connect(gain);
-    osc.connect(gain);
-    gain.connect(this.masterGain);
+        noise.start(now);
+        noise.stop(now + dur);
+      }
 
-    noise.start(now);
-    osc.start(now);
-    noise.stop(now + dur);
-    osc.stop(now + dur);
+      // Punch tone
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(weaponType === 'sniper' ? 180 : 320, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + dur);
 
-    // Call Android native vibration if running inside WebView
-    if (window.AndroidBridge && window.AndroidBridge.vibrate) {
-      window.AndroidBridge.vibrate(30);
-    }
+      const oscGain = this.ctx.createGain();
+      oscGain.gain.setValueAtTime(weaponType === 'sniper' ? 0.8 : 0.5, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.01, now + dur);
+
+      osc.connect(oscGain);
+      oscGain.connect(this.masterGain);
+
+      osc.start(now);
+      osc.stop(now + dur);
+
+      // Call Android native vibration if running inside WebView
+      if (window.AndroidBridge && window.AndroidBridge.vibrate) {
+        window.AndroidBridge.vibrate(30);
+      }
+    } catch (_) {}
   }
 
   playHitMarker(isHeadshot = false) {
@@ -124,38 +135,43 @@ class AudioManager {
 
   playExplosion() {
     if (!this.ctx || this.muted) return;
-    this.resume();
+    try {
+      this.resume();
 
-    const now = this.ctx.currentTime;
-    const dur = 0.8;
-    const bufferSize = this.ctx.sampleRate * dur;
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.4));
-    }
+      const now = this.ctx.currentTime;
+      const dur = 0.8;
 
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = buffer;
+      if (this.ctx.createBuffer && this.ctx.sampleRate) {
+        const bufferSize = Math.floor(this.ctx.sampleRate * dur);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.4));
+        }
 
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(600, now);
-    filter.frequency.exponentialRampToValueAtTime(60, now + dur);
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
 
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(1.0, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(600, now);
+        filter.frequency.exponentialRampToValueAtTime(60, now + dur);
 
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-    noise.start(now);
-    noise.stop(now + dur);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(1.0, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
 
-    if (window.AndroidBridge && window.AndroidBridge.vibrate) {
-      window.AndroidBridge.vibrate(150);
-    }
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        noise.start(now);
+        noise.stop(now + dur);
+      }
+
+      if (window.AndroidBridge && window.AndroidBridge.vibrate) {
+        window.AndroidBridge.vibrate(150);
+      }
+    } catch (_) {}
   }
 
   playPickup() {

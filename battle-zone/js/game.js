@@ -17,54 +17,168 @@ class BattleZoneGame {
     this.clock = new THREE.Clock();
     this.isRunning = false;
     this.currentLevel = 1;
+    this.webglError = null;
+    this.isReady = false;
 
+    window.gameInstance = this;
     this.initThree();
   }
 
+  static isWebGLSupported() {
+    try {
+      const canvas = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  showWebGLErrorUI(message) {
+    let errModal = document.getElementById('modal-webgl-error');
+    if (!errModal) {
+      errModal = document.createElement('div');
+      errModal.id = 'modal-webgl-error';
+      errModal.className = 'modal active';
+      errModal.innerHTML = `
+        <div class="modal-content" style="border-color:#ff1744;max-width:440px;">
+          <div class="modal-title" style="color:#ff5252;">⚠️ 3D WEBGL REQUIRED</div>
+          <p style="color:#cfd8dc;font-size:14px;line-height:1.5;margin:12px 0;">
+            ${message || 'Hardware-accelerated 3D WebGL is unavailable or disabled in your browser.'}
+          </p>
+          <div style="background:rgba(255,255,255,0.06);padding:10px;border-radius:6px;font-size:12px;color:#b0bec5;text-align:left;margin-bottom:14px;line-height:1.6;">
+            <b>How to enable 3D gameplay:</b><br>
+            • Chrome / Edge: Settings → System → Enable <i>"Use graphics acceleration when available"</i><br>
+            • Safari: Settings → Advanced → Develop → Experimental Features → WebGL 2.0<br>
+            • Mobile: Enable WebGL in browser flags or use standard Chrome/Firefox mobile.
+          </div>
+          <button class="btn-primary" onclick="window.location.reload()">RETRY LOADING 3D</button>
+        </div>
+      `;
+      document.body.appendChild(errModal);
+    } else {
+      errModal.classList.add('active');
+    }
+  }
+
   initThree() {
-    // 1. Scene with atmospheric battlefield fog
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x7da4c2); // Daylight military sky
-    this.scene.fog = new THREE.FogExp2(0x7da4c2, 0.007);
+    if (!this.container) {
+      this.container = document.getElementById('canvas-container');
+    }
 
-    // 2. Camera
-    const aspect = window.innerWidth / window.innerHeight;
-    this.camera = new THREE.PerspectiveCamera(65, aspect, 0.1, 500);
+    if (!BattleZoneGame.isWebGLSupported()) {
+      this.webglError = 'WebGL 3D graphics is not supported or hardware acceleration is turned off.';
+      console.warn(this.webglError);
+      return;
+    }
 
-    // 3. Renderer with high performance settings
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
-    this.renderer.shadowMap.enabled = true;
-    this.container.appendChild(this.renderer.domElement);
+    try {
+      // 1. Scene with atmospheric battlefield fog
+      this.scene = new THREE.Scene();
+      this.scene.background = new THREE.Color(0x7da4c2); // Daylight military sky
+      this.scene.fog = new THREE.FogExp2(0x7da4c2, 0.007);
 
-    // 4. Lighting
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x445544, 0.65);
-    hemiLight.position.set(0, 50, 0);
-    this.scene.add(hemiLight);
+      // 2. Camera
+      const width = window.innerWidth || (this.container ? this.container.clientWidth : 800) || 800;
+      const height = window.innerHeight || (this.container ? this.container.clientHeight : 600) || 600;
+      const aspect = width / Math.max(1, height);
+      this.camera = new THREE.PerspectiveCamera(65, aspect, 0.1, 500);
 
-    const dirLight = new THREE.DirectionalLight(0xfffaed, 0.95);
-    dirLight.position.set(80, 120, 60);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    this.scene.add(dirLight);
+      // 3. Renderer with robust fallback configurations
+      let renderer = null;
+      let targetCanvas = this.container ? this.container.querySelector('canvas') : null;
+      if (!targetCanvas) {
+        targetCanvas = document.createElement('canvas');
+      }
 
-    // 5. Input
-    this.input = new InputManager();
+      const configs = [
+        { canvas: targetCanvas, antialias: false, powerPreference: 'default', precision: 'mediump' },
+        { canvas: targetCanvas, antialias: true, powerPreference: 'default' },
+        { canvas: targetCanvas, antialias: false, powerPreference: 'low-power' },
+        { canvas: targetCanvas }
+      ];
 
-    // 6. Handle window resizing
-    window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+      for (const cfg of configs) {
+        try {
+          renderer = new THREE.WebGLRenderer(cfg);
+          if (renderer && renderer.getContext()) break;
+        } catch (e) {
+          console.warn('WebGL config attempt failed', cfg, e);
+          renderer = null;
+        }
+      }
+
+      if (!renderer) {
+        throw new Error('Unable to create WebGL context with any configuration.');
+      }
+
+      this.renderer = renderer;
+      this.renderer.setSize(width, height);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+      try {
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.BasicShadowMap;
+      } catch (_) {
+        this.renderer.shadowMap.enabled = false;
+      }
+
+      if (this.container && !this.container.contains(this.renderer.domElement)) {
+        this.container.innerHTML = '';
+        this.container.appendChild(this.renderer.domElement);
+      }
+
+      // 4. Lighting
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x445544, 0.65);
+      hemiLight.position.set(0, 50, 0);
+      this.scene.add(hemiLight);
+
+      const dirLight = new THREE.DirectionalLight(0xfffaed, 0.95);
+      dirLight.position.set(80, 120, 60);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 1024;
+      dirLight.shadow.mapSize.height = 1024;
+      this.scene.add(dirLight);
+
+      // 5. Input
+      if (!this.input) {
+        this.input = new InputManager();
+      }
+
+      // 6. Handle window resizing
+      window.addEventListener('resize', () => {
+        if (this.camera && this.renderer) {
+          const w = window.innerWidth || 800;
+          const h = window.innerHeight || 600;
+          this.camera.aspect = w / Math.max(1, h);
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(w, h);
+        }
+      });
+
+      this.webglError = null;
+      this.isReady = true;
+    } catch (err) {
+      this.webglError = 'WebGL initialization error: ' + err.message;
+      console.error(this.webglError, err);
+    }
   }
 
   startMission(levelNumber = 1) {
-    const wasRunning = this.isRunning;
-    this.currentLevel = levelNumber;
-    window.audio.init();
+    if (!this.renderer || this.webglError) {
+      if (!this.renderer) {
+        this.initThree();
+      }
+      if (!this.renderer || this.webglError) {
+        this.showWebGLErrorUI(this.webglError || '3D WebGL renderer is not available.');
+        return;
+      }
+    }
+
+    try {
+      const wasRunning = this.isRunning;
+      this.currentLevel = levelNumber;
+      if (window.audio && typeof window.audio.init === 'function') {
+        window.audio.init();
+      }
 
     // Reset scene
     while (this.scene.children.length > 0) {
@@ -96,14 +210,19 @@ class BattleZoneGame {
     this.clock.getDelta(); // reset clock delta to prevent jump
     this.isRunning = true;
 
-    // Show in-game HUD
+    // Close open modals and show in-game HUD
+    document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
     window.uiManager.showScreen('screen-game');
     window.uiManager.showNotification(`Loaded ${mission.title}! Ready for combat.`);
 
     if (!wasRunning) {
       this.loop();
     }
+  } catch (err) {
+    console.error('Failed to start mission:', err);
+    this.showWebGLErrorUI('Error starting mission: ' + err.message);
   }
+}
 
   loop() {
     if (!this.isRunning) return;
@@ -337,6 +456,22 @@ class BattleZoneGame {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  window.gameInstance = new BattleZoneGame();
-});
+window.BattleZoneGame = BattleZoneGame;
+
+function initBattleZone() {
+  if (!window.gameInstance) {
+    try {
+      window.gameInstance = new BattleZoneGame();
+    } catch (e) {
+      console.error("Critical error starting BattleZone:", e);
+    }
+  }
+}
+
+window.initBattleZone = initBattleZone;
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initBattleZone);
+} else {
+  initBattleZone();
+}

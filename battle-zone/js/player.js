@@ -322,7 +322,7 @@ class PlayerController {
     this.isAiming = !!input.aim;
 
     // Weapon firing
-    const now = performance.now() / 1000;
+    const now = (typeof performance !== 'undefined' && performance.now) ? (performance.now() / 1000) : (Date.now() / 1000);
     if (input.fire && !this.isReloading && !this.inVehicle) {
       if (now - this.lastShotTime >= this.equippedWeapon.fireRate) {
         if (this.currentAmmo > 0) {

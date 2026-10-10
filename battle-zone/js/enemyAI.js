@@ -6,14 +6,16 @@ class EnemyBot {
     this.id = id;
     this.name = name;
     this.locationType = locationType; // 'town', 'warehouse', 'military', 'forest'
-    this.spawnPos = spawnPos.clone();
+    this.spawnPos = (spawnPos && typeof spawnPos.clone === 'function')
+      ? spawnPos.clone()
+      : new THREE.Vector3(spawnPos ? spawnPos.x : 0, spawnPos ? (spawnPos.y || 0) : 0, spawnPos ? spawnPos.z : 0);
     this.scene = scene;
     this.map = map;
 
     // 3D Soldier Model
     this.character = ModelFactory.createSoldier(false); // Enemy red camo
     this.scene.add(this.character.root);
-    this.position = spawnPos.clone();
+    this.position = this.spawnPos.clone();
     this.character.root.position.copy(this.position);
 
     // AI Stats based on location tier

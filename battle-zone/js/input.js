@@ -16,7 +16,7 @@ class InputManager {
     this.interact = false;
     this.switchWeaponSlot = null;
 
-    this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    this.isTouchDevice = ('ontouchstart' in window) || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
     this.isPointerLocked = false;
 
     // Mobile Touch tracking

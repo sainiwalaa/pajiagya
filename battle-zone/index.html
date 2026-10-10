@@ -197,6 +197,12 @@
 
   <!-- JavaScript Modules -->
   <script src="js/lib/three.min.js"></script>
+  <script>
+    if (typeof THREE === 'undefined') {
+      console.warn("Local three.min.js not available, injecting fallback Three.js r128 CDN...");
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+    }
+  </script>
   <script src="js/audio.js"></script>
   <script src="js/saveSystem.js"></script>
   <script src="js/weapons.js"></script>
@@ -210,11 +216,37 @@
   <script src="js/game.js"></script>
 
   <script>
+    // Global Error Boundary & Feedback
+    window.lastRuntimeError = null;
+    window.addEventListener('error', function(e) {
+      window.lastRuntimeError = e.message || (e.error ? e.error.message : 'Unknown runtime error');
+      console.error("BattleZone captured error:", e.error || e.message);
+    });
+
     // Menu Helper Functions
     function startGameMission(lvl) {
-      const level = lvl || (window.saveSystem && window.saveSystem.data ? window.saveSystem.data.unlockedLevel : 1);
-      if (window.gameInstance) {
-        window.gameInstance.startMission(level);
+      try {
+        if (!window.gameInstance && typeof window.initBattleZone === 'function') {
+          window.initBattleZone();
+        }
+
+        const level = lvl || (window.saveSystem && window.saveSystem.data ? window.saveSystem.data.unlockedLevel : 1);
+
+        if (window.gameInstance) {
+          window.gameInstance.startMission(level);
+        } else {
+          const errMsg = window.lastRuntimeError 
+            ? "Engine initialization error: " + window.lastRuntimeError
+            : "Game engine could not initialize. WebGL 3D graphics may be unavailable or disabled in this browser.";
+          if (window.BattleZoneGame && BattleZoneGame.prototype && BattleZoneGame.prototype.showWebGLErrorUI) {
+            BattleZoneGame.prototype.showWebGLErrorUI(errMsg);
+          } else {
+            alert(errMsg);
+          }
+        }
+      } catch (err) {
+        console.error("Critical error in startGameMission:", err);
+        alert("Startup error: " + err.message);
       }
     }
 
@@ -222,14 +254,16 @@
       const list = document.getElementById('missions-list');
       const unlocked = window.saveSystem ? window.saveSystem.data.unlockedLevel : 1;
       let html = '';
-      window.MISSION_DEFINITIONS.forEach(m => {
-        const isLocked = m.level > unlocked;
-        html += `<button class="btn-secondary" style="display:flex;justify-content:space-between;${isLocked ? 'opacity:0.5;' : ''}" 
-          ${isLocked ? 'disabled' : `onclick="closeMissionsModal(); startGameMission(${m.level});"`}>
-          <span>Level ${m.level}: ${m.title}</span>
-          <span>${isLocked ? '🔒 LOCKED' : 'PLAY ▶'}</span>
-        </button>`;
-      });
+      if (window.MISSION_DEFINITIONS) {
+        window.MISSION_DEFINITIONS.forEach(m => {
+          const isLocked = m.level > unlocked;
+          html += `<button class="btn-secondary" style="display:flex;justify-content:space-between;${isLocked ? 'opacity:0.5;' : ''}" 
+            ${isLocked ? 'disabled' : `onclick="closeMissionsModal(); startGameMission(${m.level});"`}>
+            <span>Level ${m.level}: ${m.title}</span>
+            <span>${isLocked ? '🔒 LOCKED' : 'PLAY ▶'}</span>
+          </button>`;
+        });
+      }
       list.innerHTML = html;
       document.getElementById('modal-missions').classList.add('active');
     }
@@ -258,12 +292,20 @@
       startGameMission(nextLvl);
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    function syncProfileData() {
       if (window.saveSystem && window.saveSystem.data) {
-        document.getElementById('menu-player-level').textContent = window.saveSystem.data.unlockedLevel;
-        document.getElementById('menu-player-coins').textContent = window.saveSystem.data.coins;
+        const lvlEl = document.getElementById('menu-player-level');
+        const coinEl = document.getElementById('menu-player-coins');
+        if (lvlEl) lvlEl.textContent = window.saveSystem.data.unlockedLevel;
+        if (coinEl) coinEl.textContent = window.saveSystem.data.coins;
       }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', syncProfileData);
+    } else {
+      syncProfileData();
+    }
   </script>
 </body>
 </html>
