@@ -27,6 +27,8 @@ class BattleMap {
     this.createForestAndRocks();
     this.createVehicles();
     this.createSupplyCrates();
+
+    this.scene.updateMatrixWorld(true);
   }
 
   createTerrain() {
@@ -47,12 +49,14 @@ class BattleMap {
     const wN = new THREE.Mesh(wallGeo, borderMat);
     wN.position.set(0, 8, -210);
     this.scene.add(wN);
+    wN.updateMatrixWorld(true);
     this.colliders.push(new THREE.Box3().setFromObject(wN));
 
     // South
     const wS = new THREE.Mesh(wallGeo, borderMat);
     wS.position.set(0, 8, 210);
     this.scene.add(wS);
+    wS.updateMatrixWorld(true);
     this.colliders.push(new THREE.Box3().setFromObject(wS));
 
     // East & West
@@ -60,11 +64,13 @@ class BattleMap {
     const wE = new THREE.Mesh(wallGeoV, borderMat);
     wE.position.set(210, 8, 0);
     this.scene.add(wE);
+    wE.updateMatrixWorld(true);
     this.colliders.push(new THREE.Box3().setFromObject(wE));
 
     const wW = new THREE.Mesh(wallGeoV, borderMat);
     wW.position.set(-210, 8, 0);
     this.scene.add(wW);
+    wW.updateMatrixWorld(true);
     this.colliders.push(new THREE.Box3().setFromObject(wW));
   }
 
@@ -105,16 +111,17 @@ class BattleMap {
       bldg.root.position.set(cfg.x, 0, cfg.z);
       bldg.root.rotation.y = cfg.rot;
       this.scene.add(bldg.root);
+      bldg.root.updateMatrixWorld(true);
 
-      // Register walls as colliders
+      // Register vertical walls as colliders (exclude floor: y <= 0.35, exclude roof: y >= 4.5)
       bldg.root.children.forEach(child => {
         if (child.geometry && child.geometry.type === 'BoxGeometry') {
-          // Exclude open doorways / lintels above 2.5m
-          if (child.position.y < 3.0 && (child.position.z !== 0 || Math.abs(child.position.x) > 2.0)) {
-            const box = new THREE.Box3();
-            child.updateMatrixWorld(true);
-            box.setFromObject(child);
-            this.colliders.push(box);
+          if (child.position.y > 0.4 && child.position.y < 4.5) {
+            // Exclude open doorways / lintels
+            if (child.position.z !== 0 || Math.abs(child.position.x) > 2.0) {
+              const box = new THREE.Box3().setFromObject(child);
+              this.colliders.push(box);
+            }
           }
         }
       });
@@ -128,6 +135,7 @@ class BattleMap {
     const sb1 = ModelFactory.createSandbagWall();
     sb1.position.set(-45, 0, -42);
     this.scene.add(sb1);
+    sb1.updateMatrixWorld(true);
     this.colliders.push(new THREE.Box3().setFromObject(sb1));
   }
 
@@ -140,12 +148,15 @@ class BattleMap {
     const barracks = ModelFactory.createBuilding('barracks', 18, 8, 22);
     barracks.root.position.set(centerX, 0, centerZ);
     this.scene.add(barracks.root);
+    barracks.root.updateMatrixWorld(true);
     barracks.root.children.forEach(child => {
       if (child.geometry && child.geometry.type === 'BoxGeometry') {
-        const box = new THREE.Box3();
-        child.updateMatrixWorld(true);
-        box.setFromObject(child);
-        this.colliders.push(box);
+        if (child.position.y > 0.4 && child.position.y < 5.5) {
+          if (child.position.z !== 0 || Math.abs(child.position.x) > 2.0) {
+            const box = new THREE.Box3().setFromObject(child);
+            this.colliders.push(box);
+          }
+        }
       }
     });
 
@@ -153,17 +164,20 @@ class BattleMap {
     const wt1 = ModelFactory.createWatchtower();
     wt1.root.position.set(centerX - 18, 0, centerZ - 18);
     this.scene.add(wt1.root);
+    wt1.root.updateMatrixWorld(true);
     this.colliders.push(new THREE.Box3().setFromObject(wt1.root));
 
     const wt2 = ModelFactory.createWatchtower();
     wt2.root.position.set(centerX + 18, 0, centerZ + 18);
     this.scene.add(wt2.root);
+    wt2.root.updateMatrixWorld(true);
     this.colliders.push(new THREE.Box3().setFromObject(wt2.root));
 
     // Compound sandbag fortifications
     const sb2 = ModelFactory.createSandbagWall();
     sb2.position.set(centerX, 0, centerZ + 15);
     this.scene.add(sb2);
+    sb2.updateMatrixWorld(true);
     this.colliders.push(new THREE.Box3().setFromObject(sb2));
 
     // High tier loot inside barracks
@@ -180,12 +194,14 @@ class BattleMap {
     const wh = ModelFactory.createWarehouse(24, 9, 30);
     wh.root.position.set(whX, 0, whZ);
     this.scene.add(wh.root);
+    wh.root.updateMatrixWorld(true);
     wh.root.children.forEach(child => {
       if (child.geometry && child.geometry.type === 'BoxGeometry') {
-        const box = new THREE.Box3();
-        child.updateMatrixWorld(true);
-        box.setFromObject(child);
-        this.colliders.push(box);
+        // Exclude floor (y <= 0.4) and high roof/overhead arch (y >= 6.5)
+        if (child.position.y > 0.4 && child.position.y < 6.5) {
+          const box = new THREE.Box3().setFromObject(child);
+          this.colliders.push(box);
+        }
       }
     });
 
@@ -198,6 +214,7 @@ class BattleMap {
       const cr = ModelFactory.createSupplyCrate(false);
       cr.position.set(cx, 0, cz);
       this.scene.add(cr);
+      cr.updateMatrixWorld(true);
       this.colliders.push(new THREE.Box3().setFromObject(cr));
     });
 
@@ -240,6 +257,7 @@ class BattleMap {
       const rock = ModelFactory.createRock();
       rock.position.set(rx, 0, rz);
       this.scene.add(rock);
+      rock.updateMatrixWorld(true);
       this.colliders.push(new THREE.Box3().setFromObject(rock));
     });
   }
@@ -250,11 +268,13 @@ class BattleMap {
     v1.root.position.set(12, 0, 15);
     v1.root.rotation.y = 0.5;
     this.scene.add(v1.root);
+    v1.root.updateMatrixWorld(true);
 
     const v2 = ModelFactory.createVehicle();
     v2.root.position.set(-38, 0, -18);
     v2.root.rotation.y = -1.2;
     this.scene.add(v2.root);
+    v2.root.updateMatrixWorld(true);
 
     this.vehicles = [
       { id: 'v1', model: v1, position: v1.root.position, rotation: v1.root.rotation, isOccupied: false, health: 450, maxHealth: 450 },
@@ -275,6 +295,7 @@ class BattleMap {
       const crateMesh = ModelFactory.createSupplyCrate(c.isAirdrop);
       crateMesh.position.set(c.x, 0, c.z);
       this.scene.add(crateMesh);
+      crateMesh.updateMatrixWorld(true);
 
       const box = new THREE.Box3().setFromObject(crateMesh);
       this.colliders.push(box);

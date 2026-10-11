@@ -473,6 +473,7 @@ class UIManager {
         <span>🐛 BATTLE ZONE DEBUG [F3]</span>
         <span style="color:#81c784;cursor:pointer;" onclick="window.uiManager.toggleDebugOverlay()">[CLOSE ✕]</span>
       </div>
+      <div><b>Input Values:</b> Fwd: ${window.gameInstance && window.gameInstance.input ? window.gameInstance.input.moveForward.toFixed(2) : '0.00'}, Right: ${window.gameInstance && window.gameInstance.input ? window.gameInstance.input.moveRight.toFixed(2) : '0.00'}, Sprint: ${player.isSprinting}</div>
       <div><b>Player Coords:</b> X: ${player.position.x.toFixed(2)}, Y: ${player.position.y.toFixed(2)}, Z: ${player.position.z.toFixed(2)}</div>
       <div><b>Control State:</b> <span style="color:#4fc3f7;">${player.inVehicle ? 'DRIVING VEHICLE' : 'ON-FOOT (' + onFootState + ')'}</span></div>
       <div><b>Vehicle State:</b> ${player.inVehicle ? `<span style="color:#ffb800;">IN VEHICLE (Speed: ${player.vehicleSpeed.toFixed(1)} m/s, Steer: ${(player.inVehicle.rotation.y * 180 / Math.PI).toFixed(1)}°)</span>` : 'None (On-Foot)'}</div>

@@ -111,8 +111,8 @@ class PlayerController {
       input.crouch = false;
     }
 
-    // Sprint state
-    this.isSprinting = !this.isCrouched && (!!input.sprint || !!this.sprintActive);
+    // Sprint state (button toggle or pushing joystick full forward)
+    this.isSprinting = !this.isCrouched && (!!input.sprint || !!this.sprintActive || input.moveForward > 0.88);
 
     // Movement speed calculations
     let baseSpeed = 5.2;
@@ -142,15 +142,22 @@ class PlayerController {
       if (!this.map.checkCollision(nextPos, 0.45)) {
         this.position.copy(nextPos);
       } else {
+        let moved = false;
         const testX = this.position.clone();
         testX.x += moveStep.x;
         if (!this.map.checkCollision(testX, 0.45)) {
           this.position.x = testX.x;
+          moved = true;
         }
         const testZ = this.position.clone();
         testZ.z += moveStep.z;
         if (!this.map.checkCollision(testZ, 0.45)) {
           this.position.z = testZ.z;
+          moved = true;
+        }
+        // Anti-stick recovery: if character touches an edge, nudge forward to prevent freezing
+        if (!moved && this.map.checkCollision(this.position, 0.45)) {
+          this.position.add(moveStep.clone().multiplyScalar(0.4));
         }
       }
     }

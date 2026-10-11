@@ -461,6 +461,15 @@ body, html {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: transform 0.1s, background 0.15s, border-color 0.15s;
+}
+
+.action-btn.active, .action-btn:active {
+  background: #ffb800 !important;
+  color: #111 !important;
+  border-color: #fff !important;
+  box-shadow: 0 0 10px rgba(255, 184, 0, 0.6);
+  transform: scale(0.95);
 }
 
 #btn-fire {

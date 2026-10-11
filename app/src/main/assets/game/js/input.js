@@ -264,7 +264,16 @@ class InputManager {
     this.bindButton('btn-aim', (down) => { if (down) this.aim = !this.aim; });
     this.bindButton('btn-jump', (down) => { if (down) this.jump = true; });
     this.bindButton('btn-crouch', (down) => { if (down) this.crouch = true; });
-    this.bindButton('btn-sprint', (down) => { this.sprint = down; });
+    this.bindButton('btn-sprint', (down) => {
+      if (down) {
+        this.sprint = !this.sprint;
+        const btn = document.getElementById('btn-sprint');
+        if (btn) btn.classList.toggle('active', this.sprint);
+        if (window.audio && typeof window.audio.playPickup === 'function') {
+          window.audio.playPickup();
+        }
+      }
+    });
     this.bindButton('btn-reload', (down) => { if (down) this.reload = true; });
     this.bindButton('btn-interact', (down) => { if (down) this.interact = true; });
   }
