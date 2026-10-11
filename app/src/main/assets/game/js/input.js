@@ -59,6 +59,11 @@ class InputManager {
         case 'Digit2':
           this.switchWeaponSlot = 'secondary';
           break;
+        case 'KeyQ':
+          if (window.gameInstance && window.gameInstance.player) {
+            window.gameInstance.player.swapWeapons();
+          }
+          break;
         case 'Tab':
           e.preventDefault();
           if (window.uiManager) window.uiManager.toggleInventory();

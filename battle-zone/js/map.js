@@ -15,6 +15,7 @@ class BattleMap {
     ];
     this.vehicles = [];
     this.supplyCrates = [];
+    this.deathCrates = [];
   }
 
   build() {
@@ -321,6 +322,34 @@ class BattleMap {
       mesh,
       collected: false
     });
+  }
+
+  spawnDeathCrate(bot) {
+    const crateMesh = ModelFactory.createDeathCrate();
+    crateMesh.position.set(bot.position.x, 0, bot.position.z);
+    this.scene.add(crateMesh);
+
+    const weaponId = (bot.weapon && bot.weapon.id) ? bot.weapon.id : 'rifle';
+    const weaponName = (bot.weapon && bot.weapon.name) ? bot.weapon.name : 'M4 Tactical Rifle';
+
+    const deathCrate = {
+      id: 'death_crate_' + bot.id,
+      enemyName: bot.name,
+      position: bot.position.clone(),
+      mesh: crateMesh,
+      looted: false,
+      items: {
+        weaponId: weaponId,
+        weaponName: weaponName,
+        ammo: weaponId === 'sniper' ? 10 : (weaponId === 'shotgun' ? 16 : 45),
+        medkit: 1,
+        energyDrink: 1
+      }
+    };
+
+    if (!this.deathCrates) this.deathCrates = [];
+    this.deathCrates.push(deathCrate);
+    return deathCrate;
   }
 
   checkCollision(position, radius = 0.5) {

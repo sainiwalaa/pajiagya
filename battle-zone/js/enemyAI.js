@@ -240,6 +240,7 @@ class EnemyBot {
   }
 
   die(isHeadshot) {
+    if (this.isDead) return;
     this.isDead = true;
     window.audio.playHitMarker(true);
 
@@ -247,11 +248,9 @@ class EnemyBot {
     this.character.root.rotation.x = -Math.PI / 2;
     this.character.root.position.y = 0.2;
 
-    // Spawn collectible 3D loot drop
-    if (this.map) {
-      const dropTypes = ['ammo_556', 'medkit', 'energy_drink'];
-      const chosenType = dropTypes[Math.floor(Math.random() * dropTypes.length)];
-      this.map.addLoot(this.position.x, 0.4, this.position.z, chosenType);
+    // Spawn collectible 3D tactical death crate with real enemy weapon and supplies
+    if (this.map && typeof this.map.spawnDeathCrate === 'function') {
+      this.map.spawnDeathCrate(this);
     }
 
     // Notify game engine

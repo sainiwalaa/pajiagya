@@ -101,22 +101,31 @@ class PlayerController {
     input.lookDeltaX = 0;
     input.lookDeltaY = 0;
 
-    // Character faces camera horizontal direction when moving or aiming
-    this.rotationY = this.cameraYaw;
+    // Character faces camera forward aim direction (+Z front model -> cameraYaw + PI)
+    this.rotationY = this.cameraYaw + Math.PI;
     this.character.root.rotation.y = this.rotationY;
+
+    // Crouch stance toggle
+    if (input.crouch) {
+      this.isCrouched = !this.isCrouched;
+      input.crouch = false;
+    }
+
+    // Sprint state
+    this.isSprinting = !this.isCrouched && (!!input.sprint || !!this.sprintActive);
 
     // Movement speed calculations
     let baseSpeed = 5.2;
-    if (this.isCrouched) baseSpeed = 2.4;
-    else if (this.isAiming) baseSpeed = 3.0;
-    else if (this.isSprinting || input.sprint) baseSpeed = 8.5;
+    if (this.isCrouched) baseSpeed = 2.6;
+    else if (this.isAiming) baseSpeed = 3.2;
+    else if (this.isSprinting) baseSpeed = 9.2;
 
     // Speed boost power
     if (this.powers.speedBoost.active) {
-      baseSpeed *= 1.55;
+      baseSpeed *= 1.5;
     }
 
-    // Direction vectors
+    // Direction vectors relative to camera orientation
     const forward = new THREE.Vector3(-Math.sin(this.cameraYaw), 0, -Math.cos(this.cameraYaw));
     const right = new THREE.Vector3(Math.cos(this.cameraYaw), 0, -Math.sin(this.cameraYaw));
 
@@ -129,11 +138,10 @@ class PlayerController {
       const moveStep = moveDir.multiplyScalar(baseSpeed * delta);
       const nextPos = this.position.clone().add(moveStep);
 
-      // Check map collision
+      // Check map collision with sliding along wall
       if (!this.map.checkCollision(nextPos, 0.45)) {
         this.position.copy(nextPos);
       } else {
-        // Try sliding along X or Z axis
         const testX = this.position.clone();
         testX.x += moveStep.x;
         if (!this.map.checkCollision(testX, 0.45)) {
@@ -149,7 +157,7 @@ class PlayerController {
 
     // Jump physics
     if (input.jump && this.isGrounded && !this.isCrouched) {
-      this.velocity.y = 6.2;
+      this.velocity.y = 6.4;
       this.isGrounded = false;
       input.jump = false;
     }
@@ -168,48 +176,51 @@ class PlayerController {
   }
 
   updateOnFootAnimations(delta, input) {
-    const isMoving = Math.abs(input.moveForward) > 0.1 || Math.abs(input.moveRight) > 0.1;
-    this.animTime += delta * (this.isSprinting ? 12 : 7);
+    const isMoving = Math.abs(input.moveForward) > 0.08 || Math.abs(input.moveRight) > 0.08;
+    const animSpeed = this.isSprinting ? 14 : (this.isCrouched ? 5.5 : 7.8);
+    this.animTime += delta * animSpeed;
 
     const c = this.character;
 
-    if (isMoving && this.isGrounded) {
-      // Natural walking / running limb swing
+    if (!this.isGrounded) {
+      // In-air jump animation
+      c.leftLegPivot.rotation.x = -0.35;
+      c.rightLegPivot.rotation.x = -0.2;
+      c.leftArmPivot.rotation.x = -0.4;
+      c.rightArmPivot.rotation.x = -Math.PI / 3;
+      c.hips.position.y = 0.95;
+    } else if (isMoving) {
+      // Natural running / walking limb swing
       const swing = Math.sin(this.animTime);
-      c.leftLegPivot.rotation.x = swing * 0.65;
-      c.rightLegPivot.rotation.x = -swing * 0.65;
-      c.leftArmPivot.rotation.x = -swing * 0.5;
+      const amp = this.isSprinting ? 0.8 : (this.isCrouched ? 0.4 : 0.6);
+      c.leftLegPivot.rotation.x = swing * amp;
+      c.rightLegPivot.rotation.x = -swing * amp;
+      c.leftArmPivot.rotation.x = -swing * amp * 0.7;
 
       // Weapon arm follows aiming or runs
       if (this.isAiming) {
-        c.rightArmPivot.rotation.x = -Math.PI / 2 + this.cameraPitch;
-        c.weaponPivot.position.set(0, -0.25, 0.25);
+        c.rightArmPivot.rotation.x = -Math.PI / 2 - this.cameraPitch;
+        c.leftArmPivot.rotation.x = -Math.PI / 2.3;
       } else {
         c.rightArmPivot.rotation.x = -Math.PI / 3 + Math.sin(this.animTime * 0.5) * 0.1;
       }
 
       // Torso bobbing
-      c.hips.position.y = (this.isCrouched ? 0.55 : 0.9) + Math.abs(Math.sin(this.animTime * 2)) * 0.05;
+      c.hips.position.y = (this.isCrouched ? 0.55 : 0.9) + Math.abs(Math.sin(this.animTime * 2)) * (this.isSprinting ? 0.08 : 0.04);
     } else {
       // Idle breathing animation
       c.leftLegPivot.rotation.x = 0;
       c.rightLegPivot.rotation.x = 0;
-      c.leftArmPivot.rotation.x = Math.sin(this.animTime * 0.4) * 0.06;
+      c.leftArmPivot.rotation.x = Math.sin(this.animTime * 0.3) * 0.05;
 
       if (this.isAiming) {
-        c.rightArmPivot.rotation.x = -Math.PI / 2 + this.cameraPitch;
+        c.rightArmPivot.rotation.x = -Math.PI / 2 - this.cameraPitch;
         c.leftArmPivot.rotation.x = -Math.PI / 2.3;
       } else {
         c.rightArmPivot.rotation.x = -Math.PI / 3.2;
       }
 
-      c.hips.position.y = (this.isCrouched ? 0.55 : 0.9) + Math.sin(this.animTime * 0.5) * 0.02;
-    }
-
-    // Crouch stance
-    if (input.crouch) {
-      this.isCrouched = !this.isCrouched;
-      input.crouch = false;
+      c.hips.position.y = (this.isCrouched ? 0.55 : 0.9) + Math.sin(this.animTime * 0.4) * 0.02;
     }
   }
 
@@ -217,36 +228,57 @@ class PlayerController {
     const v = this.inVehicle;
     if (!v) return;
 
-    // Driving physics
+    // Driving physics constants
     const maxSpeed = 24.0;
     const accel = 18.0;
-    const brake = 22.0;
+    const footBrake = 26.0;
 
-    if (input.moveForward > 0.1) {
-      this.vehicleSpeed = Math.min(maxSpeed, this.vehicleSpeed + accel * delta);
+    // Spacebar is handbrake
+    const isHandbrake = !!input.jump;
+
+    if (isHandbrake) {
+      this.vehicleSpeed *= Math.pow(0.12, delta);
+      window.audio.playVehicleEngine(false);
+    } else if (input.moveForward > 0.1) {
+      // Accelerate forward
+      if (this.vehicleSpeed < 0) {
+        // Was in reverse, brake first
+        this.vehicleSpeed = Math.min(0, this.vehicleSpeed + footBrake * delta);
+      } else {
+        this.vehicleSpeed = Math.min(maxSpeed, this.vehicleSpeed + accel * delta * input.moveForward);
+      }
       window.audio.playVehicleEngine(true);
     } else if (input.moveForward < -0.1) {
-      this.vehicleSpeed = Math.max(-10.0, this.vehicleSpeed - accel * delta);
+      // S key: footbrake if moving forward, else reverse
+      if (this.vehicleSpeed > 1.0) {
+        this.vehicleSpeed = Math.max(0, this.vehicleSpeed - footBrake * delta * Math.abs(input.moveForward));
+      } else {
+        this.vehicleSpeed = Math.max(-10.0, this.vehicleSpeed - accel * 0.7 * delta);
+      }
+      window.audio.playVehicleEngine(false);
     } else {
-      this.vehicleSpeed *= 0.96; // Coasting drag
+      this.vehicleSpeed *= Math.pow(0.72, delta); // Coasting friction
       window.audio.playVehicleEngine(false);
     }
 
     // Steering
-    if (Math.abs(this.vehicleSpeed) > 0.5) {
+    if (Math.abs(this.vehicleSpeed) > 0.3) {
       const steerSpeed = 2.4;
-      if (input.moveRight > 0.1) v.rotation.y -= steerSpeed * delta;
-      if (input.moveRight < -0.1) v.rotation.y += steerSpeed * delta;
+      const reverseMultiplier = this.vehicleSpeed < 0 ? -1 : 1;
+      if (input.moveRight > 0.1) v.rotation.y -= steerSpeed * delta * reverseMultiplier;
+      if (input.moveRight < -0.1) v.rotation.y += steerSpeed * delta * reverseMultiplier;
     }
 
-    // Turn front wheels
+    // Turn front wheels and spin all wheels
     const steerVisual = (input.moveRight || 0) * 0.35;
-    v.model.wheels.forEach(w => {
-      if (w.isFront) w.pivot.rotation.y = -steerVisual;
-      w.mesh.rotation.x += this.vehicleSpeed * delta * 2.0; // Spin wheels
-    });
+    if (v.model && v.model.wheels) {
+      v.model.wheels.forEach(w => {
+        if (w.isFront) w.pivot.rotation.y = -steerVisual;
+        w.mesh.rotation.x += this.vehicleSpeed * delta * 2.5; // Spin wheels
+      });
+    }
 
-    // Move vehicle forward
+    // Move vehicle forward along heading
     const forward = new THREE.Vector3(Math.sin(v.rotation.y), 0, Math.cos(v.rotation.y));
     const step = forward.multiplyScalar(this.vehicleSpeed * delta);
     const nextPos = v.position.clone().add(step);
@@ -254,11 +286,11 @@ class PlayerController {
     if (!this.map.checkCollision(nextPos, 1.4)) {
       v.position.copy(nextPos);
     } else {
-      this.vehicleSpeed = -this.vehicleSpeed * 0.3; // Bounce back on impact
+      this.vehicleSpeed = -this.vehicleSpeed * 0.35; // Bounce back on impact
       window.audio.playExplosion();
     }
 
-    // Check roadkill against enemy bots
+    // Roadkill against enemy bots
     if (Math.abs(this.vehicleSpeed) > 5.0 && window.gameInstance && window.gameInstance.enemyManager) {
       window.gameInstance.enemyManager.bots.forEach(b => {
         if (!b.isDead && v.position.distanceTo(b.position) < 2.6) {
@@ -269,39 +301,86 @@ class PlayerController {
       });
     }
 
-    // Match player position inside vehicle
+    // Compute driver seat world position inside buggy
+    const seatOffset = new THREE.Vector3(-0.4, 0.92, -0.2);
+    seatOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), v.rotation.y);
+    const driverWorldPos = v.position.clone().add(seatOffset);
+
+    // Keep player character VISIBLE in driver seat, posed driving
     this.position.copy(v.position);
-    this.character.root.position.copy(v.position);
-    this.character.root.visible = false; // Hide on-foot model while driving
+    this.character.root.position.copy(driverWorldPos);
+    this.character.root.rotation.y = v.rotation.y + Math.PI;
+    this.character.root.visible = true;
 
-    // Match camera rotation to vehicle direction smoothly
+    // Seated driving posture
+    const c = this.character;
+    c.hips.position.y = 0.52;
+    c.leftLegPivot.rotation.x = -Math.PI / 2.3;
+    c.rightLegPivot.rotation.x = -Math.PI / 2.3;
+    c.leftArmPivot.rotation.x = -Math.PI / 2.6;
+    c.rightArmPivot.rotation.x = -Math.PI / 2.6;
+
+    // Camera tracks vehicle orientation smoothly
     this.cameraYaw = v.rotation.y + Math.PI;
-
-    // Exit vehicle action
-    if (input.interact) {
-      this.exitVehicle();
-      input.interact = false;
-    }
   }
 
   enterVehicle(v) {
     this.inVehicle = v;
     v.isOccupied = true;
     this.vehicleSpeed = 0;
-    this.character.root.visible = false;
+    this.character.root.visible = true; // Visibly seated in driver seat
     window.audio.playPickup();
+    if (window.uiManager) {
+      window.uiManager.showNotification('🏎️ DRIVING VEHICLE [WASD / Joystick to Drive • Space / Brake to Stop • E to Exit]');
+    }
   }
 
   exitVehicle() {
     if (!this.inVehicle) return;
     const v = this.inVehicle;
     v.isOccupied = false;
-    // Step out safely to the left of the buggy
-    this.position.set(v.position.x - 2.2, 0, v.position.z);
+
+    // Test safe exit position (left side, right side, or rear)
+    const offsets = [
+      new THREE.Vector3(-2.2, 0, 0),
+      new THREE.Vector3(2.2, 0, 0),
+      new THREE.Vector3(0, 0, -2.4)
+    ];
+    let exitPos = null;
+    for (const off of offsets) {
+      off.applyAxisAngle(new THREE.Vector3(0, 1, 0), v.rotation.y);
+      const test = v.position.clone().add(off);
+      if (!this.map.checkCollision(test, 0.45)) {
+        exitPos = test;
+        break;
+      }
+    }
+    if (!exitPos) {
+      exitPos = v.position.clone().add(new THREE.Vector3(-2.2, 0, 0));
+    }
+
+    this.position.copy(exitPos);
     this.character.root.position.copy(this.position);
     this.character.root.visible = true;
+
+    // Reset standing limb rotations
+    const c = this.character;
+    c.hips.position.y = 0.9;
+    c.leftLegPivot.rotation.x = 0;
+    c.rightLegPivot.rotation.x = 0;
+    c.leftArmPivot.rotation.x = 0;
+    c.rightArmPivot.rotation.x = -Math.PI / 3.2;
+
     this.inVehicle = null;
+    this.vehicleSpeed = 0;
     window.audio.playPickup();
+    if (window.uiManager) {
+      window.uiManager.showNotification('Exited Vehicle');
+    }
+  }
+
+  swapWeapons() {
+    this.switchWeapon(this.currentSlot === 'primary' ? 'secondary' : 'primary');
   }
 
   updateCombat(delta, input) {

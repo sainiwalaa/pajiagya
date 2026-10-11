@@ -69,21 +69,22 @@
       <div id="pickup-notification">+30 Rifle Ammo</div>
 
       <!-- Context-Sensitive Interaction Button -->
-      <button id="btn-interact" onclick="if(window.gameInstance) window.gameInstance.handlePlayerInteract();">
+      <button id="btn-interact">
         <span id="interact-label">INTERACT [E]</span>
       </button>
 
-      <!-- Tactical Power Abilities -->
+      <!-- Tactical Power Abilities & Backpack -->
       <div class="powers-cluster">
-        <button id="btn-power-speed" class="power-btn" onclick="window.gameInstance.player.activatePower('speedBoost')">⚡</button>
-        <button id="btn-power-shield" class="power-btn" onclick="window.gameInstance.player.activatePower('energyShield')">🛡️</button>
-        <button id="btn-power-scan" class="power-btn" onclick="window.gameInstance.player.activatePower('enemyScanner')">📡</button>
+        <button id="btn-power-speed" class="power-btn" title="Speed Boost" onclick="if(window.gameInstance && window.gameInstance.player) window.gameInstance.player.activatePower('speedBoost')">⚡</button>
+        <button id="btn-power-shield" class="power-btn" title="Energy Shield" onclick="if(window.gameInstance && window.gameInstance.player) window.gameInstance.player.activatePower('energyShield')">🛡️</button>
+        <button id="btn-power-scan" class="power-btn" title="Radar Scanner" onclick="if(window.gameInstance && window.gameInstance.player) window.gameInstance.player.activatePower('enemyScanner')">📡</button>
+        <button id="btn-bag" class="power-btn" title="Tactical Backpack (Tab)" onclick="if(window.uiManager) window.uiManager.toggleInventory()">🎒</button>
       </div>
 
       <!-- Bottom HUD: Status & Actions -->
       <div class="hud-bottom">
         <!-- Player Status Card -->
-        <div class="player-status-card">
+        <div class="player-status-card" style="cursor:pointer;" title="Tap to switch weapon slot" onclick="if(window.gameInstance && window.gameInstance.player) window.gameInstance.player.swapWeapons();">
           <div class="bar-container">
             <div id="bar-armor"></div>
           </div>

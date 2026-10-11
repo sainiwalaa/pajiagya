@@ -105,20 +105,52 @@ class UIManager {
       return;
     }
 
-    // Check near vehicle
     let nearAction = null;
-    map.vehicles.forEach(v => {
-      if (player.position.distanceTo(v.position) < 3.2) {
-        nearAction = 'ENTER VEHICLE [E]';
-      }
-    });
 
-    // Check near supply crate
-    map.supplyCrates.forEach(c => {
-      if (!c.isOpened && player.position.distanceTo(c.position) < 2.5) {
-        nearAction = c.isAirdrop ? 'OPEN AIRDROP [E]' : 'LOOT CRATE [E]';
+    // 1. Check near Death Crates (enemy loot drops)
+    if (map && map.deathCrates) {
+      for (let i = 0; i < map.deathCrates.length; i++) {
+        const dc = map.deathCrates[i];
+        if (!dc.looted && player.position.distanceTo(dc.position) < 3.2) {
+          nearAction = `LOOT ${dc.enemyName ? dc.enemyName.toUpperCase() : 'DEATH CRATE'} [E]`;
+          break;
+        }
       }
-    });
+    }
+
+    // 2. Check near Field Loot
+    if (!nearAction && map && map.lootSpawns) {
+      for (let i = 0; i < map.lootSpawns.length; i++) {
+        const loot = map.lootSpawns[i];
+        if (!loot.collected && player.position.distanceTo(loot.position) < 2.8) {
+          const typeName = loot.type.replace('_', ' ').toUpperCase();
+          nearAction = `PICK UP ${typeName} [E]`;
+          break;
+        }
+      }
+    }
+
+    // 3. Check near vehicle
+    if (!nearAction && map && map.vehicles) {
+      for (let i = 0; i < map.vehicles.length; i++) {
+        const v = map.vehicles[i];
+        if (!v.isOccupied && player.position.distanceTo(v.position) < 3.5) {
+          nearAction = 'ENTER VEHICLE [E]';
+          break;
+        }
+      }
+    }
+
+    // 4. Check near supply crate
+    if (!nearAction && map && map.supplyCrates) {
+      for (let i = 0; i < map.supplyCrates.length; i++) {
+        const c = map.supplyCrates[i];
+        if (!c.isOpened && player.position.distanceTo(c.position) < 2.8) {
+          nearAction = c.isAirdrop ? 'OPEN AIRDROP [E]' : 'LOOT CRATE [E]';
+          break;
+        }
+      }
+    }
 
     if (nearAction) {
       this.contextActionBtn.classList.add('visible');
@@ -278,17 +310,33 @@ class UIManager {
     if (!grid) return;
 
     const inv = player.inventory;
+    const primW = WEAPON_REGISTRY[inv.primary] || WEAPON_REGISTRY.rifle;
+    const secW = WEAPON_REGISTRY[inv.secondary] || WEAPON_REGISTRY.pistol;
+
     const items = [
-      { name: 'Primary: ' + player.equippedWeapon.name, count: `${player.currentAmmo}/${player.equippedWeapon.magSize}`, icon: '🔫' },
+      {
+        name: `Primary: ${primW.name} ${player.currentSlot === 'primary' ? '★ (EQUIPPED)' : ''}`,
+        count: `${player.currentSlot === 'primary' ? player.currentAmmo : primW.magSize}/${primW.magSize}`,
+        icon: '🔫',
+        action: 'equip_primary'
+      },
+      {
+        name: `Secondary: ${secW.name} ${player.currentSlot === 'secondary' ? '★ (EQUIPPED)' : ''}`,
+        count: `${player.currentSlot === 'secondary' ? player.currentAmmo : secW.magSize}/${secW.magSize}`,
+        icon: '🔫',
+        action: 'equip_secondary'
+      },
       { name: 'Medkit (+75 HP)', count: `x${inv.medkits}`, icon: '💊', action: 'heal' },
       { name: 'Energy Drink (+50 Armor)', count: `x${inv.energyDrinks}`, icon: '⚡', action: 'drink' },
-      { name: '5.56mm Ammo', count: `${inv.ammo556} rds`, icon: '📦' },
+      { name: '5.56mm Rifle Ammo', count: `${inv.ammo556 || 0} rds`, icon: '📦' },
+      { name: '12-Gauge Shotgun Shells', count: `${inv.ammoShotgun || 0} rds`, icon: '📦' },
+      { name: 'Sniper Caliber Ammo', count: `${inv.ammoSniper || 0} rds`, icon: '📦' },
       { name: 'Body Armor', count: `${player.armor}%`, icon: '🛡️' }
     ];
 
     let html = '';
     items.forEach(it => {
-      html += `<div class="inv-slot" ${it.action ? `onclick="window.uiManager.useItem('${it.action}')"` : ''}>
+      html += `<div class="inv-slot" ${it.action ? `onclick="window.uiManager.useItem('${it.action}')"` : ''} style="${it.action ? 'cursor:pointer;' : ''}">
         <div class="inv-icon">${it.icon}</div>
         <div class="inv-name">${it.name}</div>
         <div class="inv-count">${it.count}</div>
@@ -301,11 +349,27 @@ class UIManager {
     if (!window.gameInstance || !window.gameInstance.player) return;
     const p = window.gameInstance.player;
     if (action === 'heal') {
-      p.heal();
-      this.showNotification('Applied Medkit! Restored Health.');
+      if (p.health >= p.maxHealth) {
+        this.showNotification('Health is already at 100%');
+      } else if (p.inventory.medkits <= 0) {
+        this.showNotification('No Medkits remaining');
+      } else {
+        p.heal();
+        this.showNotification('Applied Medkit! Restored Health.');
+      }
     } else if (action === 'drink') {
-      p.useEnergyDrink();
-      this.showNotification('Consumed Energy Drink! Restored Armor.');
+      if (p.inventory.energyDrinks <= 0) {
+        this.showNotification('No Energy Drinks remaining');
+      } else {
+        p.useEnergyDrink();
+        this.showNotification('Consumed Energy Drink! Restored Armor.');
+      }
+    } else if (action === 'equip_primary') {
+      p.switchWeapon('primary');
+      this.showNotification(`Equipped Primary: ${p.equippedWeapon.name}`);
+    } else if (action === 'equip_secondary') {
+      p.switchWeapon('secondary');
+      this.showNotification(`Equipped Secondary: ${p.equippedWeapon.name}`);
     }
     this.populateInventory(p);
   }

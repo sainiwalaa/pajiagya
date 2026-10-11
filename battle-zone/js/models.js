@@ -550,6 +550,40 @@ const ModelFactory = {
       }
     }
     return group;
+  },
+
+  createDeathCrate() {
+    const group = new THREE.Group();
+    group.name = 'death_crate';
+    const size = 0.95;
+
+    // Military dark green/black chest
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0x1f2e24 });
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(size, 0.55, size * 0.75), bodyMat);
+    crate.position.y = 0.275;
+    group.add(crate);
+
+    // Golden trim edge
+    const trimMat = new THREE.MeshLambertMaterial({ color: 0xffb800 });
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(size + 0.04, 0.08, size * 0.75 + 0.04), trimMat);
+    lid.position.y = 0.56;
+    group.add(lid);
+
+    // Glowing green beacon pulse on top
+    const beaconMat = new THREE.MeshBasicMaterial({ color: 0x76ff03 });
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), beaconMat);
+    beacon.position.y = 0.65;
+    group.add(beacon);
+
+    // Glowing loot marker ring
+    const haloGeo = new THREE.RingGeometry(0.38, 0.5, 16);
+    const haloMat = new THREE.MeshBasicMaterial({ color: 0xffd54f, side: THREE.DoubleSide });
+    const halo = new THREE.Mesh(haloGeo, haloMat);
+    halo.rotation.x = Math.PI / 2;
+    halo.position.y = 0.04;
+    group.add(halo);
+
+    return group;
   }
 };
 

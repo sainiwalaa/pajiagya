@@ -288,16 +288,89 @@ class BattleZoneGame {
   handlePlayerInteract() {
     if (!this.player || !this.map) return;
 
-    // If currently driving, exit vehicle
+    // Interaction debounce cooldown to prevent double-click / duplicate touch event conflicts
+    const now = (typeof performance !== 'undefined' && performance.now) ? (performance.now() / 1000) : (Date.now() / 1000);
+    if (this.lastInteractTime && (now - this.lastInteractTime < 0.35)) {
+      return;
+    }
+    this.lastInteractTime = now;
+
+    // 1. If currently driving, exit vehicle
     if (this.player.inVehicle) {
       this.player.exitVehicle();
       return;
     }
 
-    // Check enter vehicle
+    // 2. Check nearby Enemy Death Crates (looting enemy kills)
+    if (this.map && this.map.deathCrates) {
+      for (let i = 0; i < this.map.deathCrates.length; i++) {
+        const dc = this.map.deathCrates[i];
+        if (!dc.looted && this.player.position.distanceTo(dc.position) < 3.2) {
+          dc.looted = true;
+          // Turn off beacon light to show crate has been looted
+          dc.mesh.traverse(child => {
+            if (child.isMesh && child.material && child.material.color) {
+              if (child.material.color.getHex() === 0x76ff03) {
+                child.material.color.setHex(0x37474f);
+              }
+            }
+          });
+
+          const items = dc.items;
+          const summary = [];
+
+          // Ammunition
+          if (items.weaponId === 'shotgun') {
+            this.player.inventory.ammoShotgun = (this.player.inventory.ammoShotgun || 0) + 16;
+            summary.push('+16 Shotgun Shells');
+          } else if (items.weaponId === 'sniper') {
+            this.player.inventory.ammoSniper = (this.player.inventory.ammoSniper || 0) + 10;
+            summary.push('+10 Sniper Ammo');
+          } else {
+            this.player.inventory.ammo556 = (this.player.inventory.ammo556 || 0) + (items.ammo || 45);
+            summary.push(`+${items.ammo || 45} Rifle Ammo`);
+          }
+
+          // Medical Supplies
+          if (items.medkit) {
+            this.player.inventory.medkits = Math.min(5, (this.player.inventory.medkits || 0) + items.medkit);
+            summary.push('+1 Medkit');
+          }
+          if (items.energyDrink) {
+            this.player.inventory.energyDrinks = Math.min(5, (this.player.inventory.energyDrinks || 0) + items.energyDrink);
+            summary.push('+1 Energy Drink');
+          }
+
+          // Enemy Weapon: equip in secondary slot if different from current primary
+          if (items.weaponId && items.weaponId !== this.player.inventory.primary) {
+            this.player.inventory.secondary = items.weaponId;
+            summary.push(`Equipped ${items.weaponName}`);
+          }
+
+          window.audio.playPickup();
+          window.uiManager.showNotification(`📦 LOOTED ${dc.enemyName.toUpperCase()}: ${summary.join(', ')}`);
+          window.missionManager.updateObjective('loot', 1);
+          this.checkMissionStatus();
+          return;
+        }
+      }
+    }
+
+    // 3. Check nearby Field Loot Pickups
+    if (this.map && this.map.lootSpawns) {
+      for (let i = 0; i < this.map.lootSpawns.length; i++) {
+        const loot = this.map.lootSpawns[i];
+        if (!loot.collected && this.player.position.distanceTo(loot.position) < 3.0) {
+          this.collectFieldLoot(loot);
+          return;
+        }
+      }
+    }
+
+    // 4. Check enter vehicle
     for (let i = 0; i < this.map.vehicles.length; i++) {
       const v = this.map.vehicles[i];
-      if (this.player.position.distanceTo(v.position) < 3.4) {
+      if (!v.isOccupied && this.player.position.distanceTo(v.position) < 3.5) {
         this.player.enterVehicle(v);
         window.missionManager.updateObjective('vehicle', 1);
         this.checkMissionStatus();
@@ -305,17 +378,17 @@ class BattleZoneGame {
       }
     }
 
-    // Check open supply crate
+    // 5. Check open supply crate / airdrop
     for (let i = 0; i < this.map.supplyCrates.length; i++) {
       const c = this.map.supplyCrates[i];
-      if (!c.isOpened && this.player.position.distanceTo(c.position) < 2.8) {
+      if (!c.isOpened && this.player.position.distanceTo(c.position) < 3.0) {
         c.isOpened = true;
         c.mesh.position.y -= 0.3; // Open visual feedback
         this.player.inventory.ammo556 += 60;
-        this.player.inventory.medkits += 1;
+        this.player.inventory.medkits = Math.min(5, (this.player.inventory.medkits || 0) + 1);
         this.player.armor = 100;
         window.audio.playPickup();
-        window.uiManager.showNotification(c.isAirdrop ? '+Airdrop Gear: Ammo, Armor & Medkit!' : '+Supply Crate Looted!');
+        window.uiManager.showNotification(c.isAirdrop ? '🪂 Airdrop: +60 Ammo, +1 Medkit, Full Armor!' : '📦 Supply Crate: +60 Ammo, +1 Medkit, Full Armor!');
         window.missionManager.updateObjective('crate', 1);
         this.checkMissionStatus();
         return;
@@ -323,38 +396,54 @@ class BattleZoneGame {
     }
   }
 
+  collectFieldLoot(loot) {
+    if (loot.collected) return;
+    loot.collected = true;
+    this.scene.remove(loot.group);
+
+    // Apply loot reward
+    if (loot.type.includes('ammo')) {
+      if (loot.type.includes('shotgun')) {
+        this.player.inventory.ammoShotgun = (this.player.inventory.ammoShotgun || 0) + 16;
+        window.uiManager.showNotification('+16 Shotgun Shells Collected');
+      } else if (loot.type.includes('sniper')) {
+        this.player.inventory.ammoSniper = (this.player.inventory.ammoSniper || 0) + 10;
+        window.uiManager.showNotification('+10 Sniper Ammo Collected');
+      } else {
+        this.player.inventory.ammo556 = (this.player.inventory.ammo556 || 0) + 45;
+        window.uiManager.showNotification('+45 Rifle Ammo Collected');
+      }
+    } else if (loot.type === 'medkit') {
+      this.player.inventory.medkits = Math.min(5, (this.player.inventory.medkits || 0) + 1);
+      window.uiManager.showNotification('+1 Tactical Medkit Collected');
+    } else if (loot.type === 'energy_drink') {
+      this.player.inventory.energyDrinks = Math.min(5, (this.player.inventory.energyDrinks || 0) + 1);
+      window.uiManager.showNotification('+1 Energy Drink Collected');
+    } else if (loot.type.includes('armor')) {
+      this.player.armor = 100;
+      window.uiManager.showNotification('+Body Armor Restored to 100%!');
+    } else if (loot.type === 'sniper') {
+      this.player.inventory.secondary = 'sniper';
+      this.player.inventory.ammoSniper = (this.player.inventory.ammoSniper || 0) + 15;
+      window.uiManager.showNotification('Equipped AWM-50 Heavy Sniper Rifle!');
+    } else if (loot.type === 'shotgun') {
+      this.player.inventory.secondary = 'shotgun';
+      this.player.inventory.ammoShotgun = (this.player.inventory.ammoShotgun || 0) + 24;
+      window.uiManager.showNotification('Equipped S12 Tactical Shotgun!');
+    }
+
+    window.missionManager.updateObjective('loot', 1);
+    window.audio.playPickup();
+    this.checkMissionStatus();
+  }
+
   checkLootPickups() {
     this.map.lootSpawns.forEach(loot => {
       if (!loot.collected) {
         loot.mesh.rotation.y += 0.04; // Rotating 3D pickup
-        if (this.player.position.distanceTo(loot.position) < 2.0) {
-          loot.collected = true;
-          this.scene.remove(loot.group);
-
-          // Apply loot reward
-          if (loot.type.includes('ammo')) {
-            this.player.inventory.ammo556 += 45;
-            window.uiManager.showNotification('+45 Rifle Ammo Collected');
-          } else if (loot.type === 'medkit') {
-            this.player.inventory.medkits += 1;
-            window.uiManager.showNotification('+1 Tactical Medkit Collected');
-          } else if (loot.type === 'energy_drink') {
-            this.player.inventory.energyDrinks += 1;
-            window.uiManager.showNotification('+1 Energy Drink Collected');
-          } else if (loot.type.includes('armor')) {
-            this.player.armor = 100;
-            window.uiManager.showNotification('+Body Armor Restored to 100%!');
-          } else if (loot.type === 'sniper') {
-            this.player.inventory.secondary = 'sniper';
-            window.uiManager.showNotification('Equipped AWM-50 Sniper Rifle!');
-          } else if (loot.type === 'shotgun') {
-            this.player.inventory.secondary = 'shotgun';
-            window.uiManager.showNotification('Equipped S12 Shotgun!');
-          }
-
-          window.missionManager.updateObjective('loot', 1);
-          window.audio.playPickup();
-          this.checkMissionStatus();
+        // Direct walk-over collection if within 1.2m
+        if (this.player.position.distanceTo(loot.position) < 1.2) {
+          this.collectFieldLoot(loot);
         }
       }
     });
@@ -376,12 +465,21 @@ class BattleZoneGame {
       }
     });
 
-    // 2. Gather solid obstacle meshes (walls, rocks, buildings) for line-of-sight blocking
+    // 2. Gather solid obstacle meshes (walls, rocks, buildings, vehicles, crates)
     const obstacleMeshes = [];
     if (this.scene) {
       this.scene.traverse(child => {
-        if (child.isMesh && child.name && !botMap.has(child) && child !== this.player.character.root) {
-          if (child.parent && child.parent.name && (child.parent.name.includes('building') || child.parent.name.includes('vehicle') || child.parent.name.includes('crate'))) {
+        if (child.isMesh && !botMap.has(child)) {
+          let isPlayerMesh = false;
+          let p = child;
+          while (p) {
+            if (p === this.player.character.root) {
+              isPlayerMesh = true;
+              break;
+            }
+            p = p.parent;
+          }
+          if (!isPlayerMesh) {
             obstacleMeshes.push(child);
           }
         }
@@ -401,9 +499,9 @@ class BattleZoneGame {
         const isHeadshot = (hit.point.y - bot.position.y) > 1.35;
         bot.takeDamage(weapon.damage, isHeadshot);
         window.audio.playHitMarker(isHeadshot);
-        this.spawnBulletTracer(startPos, hit.point, 0xffeb3b);
+        this.spawnBulletTracer(startPos, hit.point, isHeadshot ? 0xff1744 : 0xffeb3b);
       } else {
-        // Hit a solid wall / obstacle
+        // Hit solid wall or obstacle
         window.audio.playHitMarker(false);
         this.spawnBulletTracer(startPos, hit.point, 0xff7043);
       }
