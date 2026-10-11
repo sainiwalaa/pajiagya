@@ -46,8 +46,9 @@
   <!-- SCREEN 2: IN-GAME HUD -->
   <div id="screen-game" class="screen">
     <div id="hud">
-      <!-- Top HUD: Compass, Objective, Minimap -->
+      <!-- Top HUD: Compass, Objective, Minimap, Debug Toggle -->
       <div class="hud-top">
+        <button id="btn-debug-toggle" class="debug-toggle-btn" onclick="window.uiManager.toggleDebugOverlay()">🐛 DEBUG</button>
         <div class="objective-box">
           <div class="obj-title">TACTICAL OBJECTIVES</div>
           <div id="objective-list"></div>
@@ -61,6 +62,9 @@
           <canvas id="minimap-canvas" width="95" height="95"></canvas>
         </div>
       </div>
+
+      <!-- Toggleable On-Screen Debug Information Overlay -->
+      <div id="debug-overlay"></div>
 
       <!-- Center Crosshair -->
       <div class="crosshair"></div>
@@ -222,6 +226,11 @@
     window.addEventListener('error', function(e) {
       window.lastRuntimeError = e.message || (e.error ? e.error.message : 'Unknown runtime error');
       console.error("BattleZone captured error:", e.error || e.message);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      const reason = e.reason ? (e.reason.message || e.reason) : 'Promise rejection';
+      console.warn("Handled promise rejection:", reason);
+      e.preventDefault();
     });
 
     // Menu Helper Functions

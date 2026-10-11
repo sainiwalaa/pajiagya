@@ -32,57 +32,54 @@ class InputManager {
 
   setupDesktopControls() {
     window.addEventListener('keydown', (e) => {
-      this.activeKeys.add(e.code);
+      if (e.code) this.activeKeys.add(e.code);
+      if (e.key) this.activeKeys.add(e.key.toLowerCase());
       this.syncMovementFromKeys();
 
-      switch (e.code) {
-        case 'Space':
-          this.jump = true;
-          break;
-        case 'KeyC':
-          this.crouch = true;
-          break;
-        case 'ShiftLeft':
-        case 'ShiftRight':
-          this.sprint = true;
-          break;
-        case 'KeyR':
-          this.reload = true;
-          break;
-        case 'KeyE':
-        case 'KeyF':
-          this.interact = true;
-          break;
-        case 'Digit1':
-          this.switchWeaponSlot = 'primary';
-          break;
-        case 'Digit2':
-          this.switchWeaponSlot = 'secondary';
-          break;
-        case 'KeyQ':
-          if (window.gameInstance && window.gameInstance.player) {
-            window.gameInstance.player.swapWeapons();
-          }
-          break;
-        case 'Tab':
-          e.preventDefault();
-          if (window.uiManager) window.uiManager.toggleInventory();
-          break;
-        case 'Escape':
-          if (document.pointerLockElement) {
-            document.exitPointerLock();
-          } else if (window.uiManager) {
-            window.uiManager.togglePauseMenu();
-          }
-          break;
+      const code = e.code || '';
+      const key = (e.key || '').toLowerCase();
+
+      if (code === 'Space' || key === ' ') {
+        this.jump = true;
+      } else if (code === 'KeyC' || key === 'c') {
+        this.crouch = true;
+      } else if (code === 'ShiftLeft' || code === 'ShiftRight' || key === 'shift') {
+        this.sprint = true;
+      } else if (code === 'KeyR' || key === 'r') {
+        this.reload = true;
+      } else if (code === 'KeyE' || key === 'e' || code === 'KeyF' || key === 'f') {
+        this.interact = true;
+      } else if (code === 'Digit1' || key === '1') {
+        this.switchWeaponSlot = 'primary';
+      } else if (code === 'Digit2' || key === '2') {
+        this.switchWeaponSlot = 'secondary';
+      } else if (code === 'KeyQ' || key === 'q') {
+        if (window.gameInstance && window.gameInstance.player) {
+          window.gameInstance.player.swapWeapons();
+        }
+      } else if (code === 'Tab' || key === 'tab') {
+        e.preventDefault();
+        if (window.uiManager) window.uiManager.toggleInventory();
+      } else if (code === 'Escape' || key === 'escape') {
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        } else if (window.uiManager) {
+          window.uiManager.togglePauseMenu();
+        }
+      } else if (code === 'F3' || key === 'f3' || code === 'Backquote' || key === '`') {
+        e.preventDefault();
+        if (window.uiManager) window.uiManager.toggleDebugOverlay();
       }
     });
 
     window.addEventListener('keyup', (e) => {
-      this.activeKeys.delete(e.code);
+      if (e.code) this.activeKeys.delete(e.code);
+      if (e.key) this.activeKeys.delete(e.key.toLowerCase());
       this.syncMovementFromKeys();
 
-      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+      const code = e.code || '';
+      const key = (e.key || '').toLowerCase();
+      if (code === 'ShiftLeft' || code === 'ShiftRight' || key === 'shift') {
         this.sprint = false;
       }
     });
@@ -165,10 +162,12 @@ class InputManager {
     let forward = 0;
     let right = 0;
 
-    if (this.activeKeys.has('KeyW') || this.activeKeys.has('ArrowUp')) forward += 1;
-    if (this.activeKeys.has('KeyS') || this.activeKeys.has('ArrowDown')) forward -= 1;
-    if (this.activeKeys.has('KeyD') || this.activeKeys.has('ArrowRight')) right += 1;
-    if (this.activeKeys.has('KeyA') || this.activeKeys.has('ArrowLeft')) right -= 1;
+    const has = (...keys) => keys.some(k => this.activeKeys.has(k) || this.activeKeys.has(k.toLowerCase()));
+
+    if (has('KeyW', 'ArrowUp', 'w')) forward += 1;
+    if (has('KeyS', 'ArrowDown', 's')) forward -= 1;
+    if (has('KeyD', 'ArrowRight', 'd')) right += 1;
+    if (has('KeyA', 'ArrowLeft', 'a')) right -= 1;
 
     this.moveForward = forward;
     this.moveRight = right;

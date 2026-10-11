@@ -640,3 +640,41 @@ body, html {
     height: 40px;
   }
 }
+
+/* Debug Overlay & Toggle Button */
+#debug-overlay {
+  display: none;
+  position: absolute;
+  top: 65px;
+  left: 12px;
+  background: rgba(10, 14, 20, 0.92);
+  border: 1px solid #455a64;
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #eceff1;
+  font-family: Consolas, monospace, sans-serif;
+  font-size: 11.5px;
+  line-height: 1.45;
+  z-index: 100;
+  max-width: 390px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+}
+
+.debug-toggle-btn {
+  background: rgba(33, 33, 33, 0.75);
+  border: 1px solid #546e7a;
+  color: #b0bec5;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 90;
+  pointer-events: auto;
+  letter-spacing: 0.5px;
+}
+.debug-toggle-btn:hover {
+  background: #37474f;
+  color: #ffb800;
+}

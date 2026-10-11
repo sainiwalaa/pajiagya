@@ -309,7 +309,7 @@ class PlayerController {
     // Keep player character VISIBLE in driver seat, posed driving
     this.position.copy(v.position);
     this.character.root.position.copy(driverWorldPos);
-    this.character.root.rotation.y = v.rotation.y + Math.PI;
+    this.character.root.rotation.y = v.rotation.y;
     this.character.root.visible = true;
 
     // Seated driving posture

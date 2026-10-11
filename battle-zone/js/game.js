@@ -232,6 +232,16 @@ class BattleZoneGame {
     if (!this.isRunning) return;
     requestAnimationFrame(() => this.loop());
 
+    const pauseModal = document.getElementById('modal-pause');
+    const isPaused = pauseModal && pauseModal.classList.contains('active');
+
+    if (isPaused) {
+      if (this.renderer && this.scene && this.camera) {
+        this.renderer.render(this.scene, this.camera);
+      }
+      return;
+    }
+
     const delta = Math.min(this.clock.getDelta(), 0.08); // Cap delta to prevent tunneling
 
     // 1. Update Player

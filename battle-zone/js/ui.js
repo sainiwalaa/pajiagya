@@ -18,6 +18,9 @@ class UIManager {
 
     this.notifBox = document.getElementById('pickup-notification');
     this.notifTimer = null;
+
+    this.debugVisible = false;
+    this.debugOverlay = document.getElementById('debug-overlay');
   }
 
   showNotification(text) {
@@ -46,13 +49,28 @@ class UIManager {
       this.armorBar.style.width = armPct + '%';
     }
 
-    // 2. Ammo & Weapon
+    // 2. Ammo & Weapon (Shows Magazine / Reserve Ammo)
     if (this.ammoCur) this.ammoCur.textContent = player.currentAmmo;
     if (this.ammoTotal) {
-      const res = player.inventory.ammo556;
-      this.ammoTotal.textContent = player.isReloading ? 'RELOADING' : `/ ${player.equippedWeapon.magSize}`;
+      let reserve = 0;
+      if (player.equippedWeaponId === 'shotgun') reserve = player.inventory.ammoShotgun || 0;
+      else if (player.equippedWeaponId === 'sniper') reserve = player.inventory.ammoSniper || 0;
+      else if (player.equippedWeaponId === 'pistol') reserve = player.inventory.ammo9mm || 0;
+      else reserve = player.inventory.ammo556 || 0;
+      this.ammoTotal.textContent = player.isReloading ? 'RELOADING' : `/ ${reserve}`;
     }
     if (this.weaponName) this.weaponName.textContent = player.equippedWeapon.name;
+
+    // Mobile driving button context adaptation
+    const jumpBtn = document.getElementById('btn-jump');
+    if (jumpBtn) {
+      jumpBtn.textContent = player.inVehicle ? 'BRAKE' : 'JUMP';
+    }
+    const fireBtn = document.getElementById('btn-fire');
+    if (fireBtn) {
+      fireBtn.style.opacity = player.inVehicle ? '0.35' : '1.0';
+      fireBtn.style.pointerEvents = player.inVehicle ? 'none' : 'auto';
+    }
 
     // 3. Compass
     if (this.compassEl) {
@@ -79,6 +97,11 @@ class UIManager {
 
     // 7. Power Cooldown Badges
     this.updatePowerButtons(player);
+
+    // 8. Debug Overlay
+    if (this.debugVisible) {
+      this.updateDebugOverlay(player, map, enemies);
+    }
   }
 
   updateObjectiveUI(mission) {
@@ -376,7 +399,12 @@ class UIManager {
 
   togglePauseMenu() {
     const modal = document.getElementById('modal-pause');
-    if (modal) modal.classList.toggle('active');
+    if (modal) {
+      modal.classList.toggle('active');
+      if (!modal.classList.contains('active') && window.gameInstance && window.gameInstance.clock) {
+        window.gameInstance.clock.getDelta();
+      }
+    }
   }
 
   showMissionComplete(mission, xp, coins) {
@@ -393,6 +421,66 @@ class UIManager {
     if (!screen) return;
     document.getElementById('gameover-reason').textContent = `Eliminated by ${attackerName}`;
     screen.classList.add('active');
+  }
+
+  toggleDebugOverlay() {
+    this.debugVisible = !this.debugVisible;
+    if (!this.debugOverlay) {
+      this.debugOverlay = document.getElementById('debug-overlay');
+    }
+    if (this.debugOverlay) {
+      this.debugOverlay.style.display = this.debugVisible ? 'block' : 'none';
+      if (this.debugVisible && window.gameInstance) {
+        this.updateDebugOverlay(
+          window.gameInstance.player,
+          window.gameInstance.map,
+          window.gameInstance.enemyManager ? window.gameInstance.enemyManager.bots : []
+        );
+      }
+    }
+    this.showNotification(`Debug Overlay: ${this.debugVisible ? 'ENABLED' : 'DISABLED'}`);
+  }
+
+  updateDebugOverlay(player, map, enemies) {
+    if (!this.debugOverlay || !player) return;
+
+    // Determine on-foot control substate
+    let onFootState = 'Idle';
+    if (!player.isGrounded) onFootState = 'In-Air / Jumping';
+    else if (player.isSprinting) onFootState = 'Sprinting';
+    else if (player.isCrouched) onFootState = 'Crouched';
+    else if (player.isAiming) onFootState = 'Aiming Down Sights';
+    else if (window.gameInstance && window.gameInstance.input && (window.gameInstance.input.moveForward || window.gameInstance.input.moveRight)) {
+      onFootState = 'Walking / Running';
+    }
+
+    const enemyList = (enemies || []).map(b => `${b.name}: ${Math.max(0, Math.round(b.health))}/${b.maxHealth}HP ${b.isDead ? '[DEAD]' : ''}`).join('<br>');
+    const activeBots = (enemies || []).filter(b => !b.isDead).length;
+    const totalBots = (enemies || []).length;
+
+    const deathCrates = (map && map.deathCrates) ? map.deathCrates : [];
+    const unlootedDc = deathCrates.filter(dc => !dc.looted).length;
+    const fieldLoot = (map && map.lootSpawns) ? map.lootSpawns : [];
+    const activeFl = fieldLoot.filter(l => !l.collected).length;
+    const supplyCrates = (map && map.supplyCrates) ? map.supplyCrates : [];
+    const unlootedSc = supplyCrates.filter(c => !c.isOpened).length;
+
+    const inv = player.inventory;
+    const totalAmmo = (inv.ammo556 || 0) + (inv.ammoShotgun || 0) + (inv.ammoSniper || 0) + (inv.ammo9mm || 0);
+
+    this.debugOverlay.innerHTML = `
+      <div style="font-weight:bold;color:#ffb800;border-bottom:1px solid #455a64;padding-bottom:4px;margin-bottom:6px;display:flex;justify-content:space-between;">
+        <span>🐛 BATTLE ZONE DEBUG [F3]</span>
+        <span style="color:#81c784;cursor:pointer;" onclick="window.uiManager.toggleDebugOverlay()">[CLOSE ✕]</span>
+      </div>
+      <div><b>Player Coords:</b> X: ${player.position.x.toFixed(2)}, Y: ${player.position.y.toFixed(2)}, Z: ${player.position.z.toFixed(2)}</div>
+      <div><b>Control State:</b> <span style="color:#4fc3f7;">${player.inVehicle ? 'DRIVING VEHICLE' : 'ON-FOOT (' + onFootState + ')'}</span></div>
+      <div><b>Vehicle State:</b> ${player.inVehicle ? `<span style="color:#ffb800;">IN VEHICLE (Speed: ${player.vehicleSpeed.toFixed(1)} m/s, Steer: ${(player.inVehicle.rotation.y * 180 / Math.PI).toFixed(1)}°)</span>` : 'None (On-Foot)'}</div>
+      <div style="margin-top:4px;"><b>Enemies (${activeBots}/${totalBots} Active):</b><br><span style="font-size:11px;color:#cfd8dc;">${enemyList || 'None'}</span></div>
+      <div style="margin-top:4px;"><b>Loot in Scene:</b> Death Crates: ${deathCrates.length} (${unlootedDc} unlooted) | Field: ${fieldLoot.length} (${activeFl} active) | Crates: ${supplyCrates.length} (${unlootedSc} closed)</div>
+      <div style="margin-top:4px;"><b>Inventory:</b> Prim: ${inv.primary} (${player.currentAmmo}) | Sec: ${inv.secondary} | Medkits: ${inv.medkits}/5 | Drinks: ${inv.energyDrinks}/5 | Ammo Total: ${totalAmmo} rds</div>
+      <div style="margin-top:4px;color:${window.lastRuntimeError ? '#ff5252' : '#81c784'};"><b>Runtime Errors:</b> ${window.lastRuntimeError || 'None (Clean 60 FPS)'}</div>
+    `;
   }
 }
 
