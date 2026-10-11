@@ -25,53 +25,75 @@ class InputManager {
     this.touchLookId = null;
     this.lookLastPos = { x: 0, y: 0 };
 
+    this.activeKeys = new Set();
     this.setupDesktopControls();
     this.setupMobileControls();
   }
 
   setupDesktopControls() {
     window.addEventListener('keydown', (e) => {
-      if (e.repeat) return;
+      this.activeKeys.add(e.code);
+      this.syncMovementFromKeys();
+
       switch (e.code) {
-        case 'KeyW': case 'ArrowUp': this.moveForward = 1; break;
-        case 'KeyS': case 'ArrowDown': this.moveForward = -1; break;
-        case 'KeyA': case 'ArrowLeft': this.moveRight = -1; break;
-        case 'KeyD': case 'ArrowRight': this.moveRight = 1; break;
-        case 'Space': this.jump = true; break;
-        case 'KeyC': this.crouch = true; break;
-        case 'ShiftLeft': case 'ShiftRight': this.sprint = true; break;
-        case 'KeyR': this.reload = true; break;
-        case 'KeyE': case 'KeyF': this.interact = true; break;
-        case 'Digit1': this.switchWeaponSlot = 'primary'; break;
-        case 'Digit2': this.switchWeaponSlot = 'secondary'; break;
+        case 'Space':
+          this.jump = true;
+          break;
+        case 'KeyC':
+          this.crouch = true;
+          break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          this.sprint = true;
+          break;
+        case 'KeyR':
+          this.reload = true;
+          break;
+        case 'KeyE':
+        case 'KeyF':
+          this.interact = true;
+          break;
+        case 'Digit1':
+          this.switchWeaponSlot = 'primary';
+          break;
+        case 'Digit2':
+          this.switchWeaponSlot = 'secondary';
+          break;
         case 'Tab':
           e.preventDefault();
           if (window.uiManager) window.uiManager.toggleInventory();
           break;
         case 'Escape':
-          if (window.uiManager) window.uiManager.togglePauseMenu();
+          if (document.pointerLockElement) {
+            document.exitPointerLock();
+          } else if (window.uiManager) {
+            window.uiManager.togglePauseMenu();
+          }
           break;
       }
     });
 
     window.addEventListener('keyup', (e) => {
-      switch (e.code) {
-        case 'KeyW': case 'ArrowUp':
-          if (this.moveForward > 0) this.moveForward = 0;
-          break;
-        case 'KeyS': case 'ArrowDown':
-          if (this.moveForward < 0) this.moveForward = 0;
-          break;
-        case 'KeyA': case 'ArrowLeft':
-          if (this.moveRight < 0) this.moveRight = 0;
-          break;
-        case 'KeyD': case 'ArrowRight':
-          if (this.moveRight > 0) this.moveRight = 0;
-          break;
-        case 'ShiftLeft': case 'ShiftRight':
-          this.sprint = false;
-          break;
+      this.activeKeys.delete(e.code);
+      this.syncMovementFromKeys();
+
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        this.sprint = false;
       }
+    });
+
+    window.addEventListener('blur', () => {
+      this.activeKeys.clear();
+      this.moveForward = 0;
+      this.moveRight = 0;
+      this.fire = false;
+      this.aim = false;
+      this.sprint = false;
+    });
+
+    // Pointer Lock change listener
+    document.addEventListener('pointerlockchange', () => {
+      this.isPointerLocked = !!document.pointerLockElement;
     });
 
     // Mouse Controls
@@ -80,21 +102,26 @@ class InputManager {
     let mouseLastY = 0;
 
     window.addEventListener('mousedown', (e) => {
-      if (e.target.closest('#hud button') || e.target.closest('.modal') || e.target.closest('#screen-menu')) return;
+      if (e.target.closest('#hud button') || e.target.closest('.modal') || e.target.closest('#screen-menu') || e.target.closest('.action-btn')) {
+        return;
+      }
 
       isMouseDown = true;
       mouseLastX = e.clientX;
       mouseLastY = e.clientY;
 
-      // Try requesting pointer lock on desktop when clicking canvas
+      // Request pointer lock on desktop when clicking viewport during game
       const container = document.getElementById('canvas-container');
-      if (container && !document.pointerLockElement && e.button === 0) {
-        try { container.requestPointerLock(); } catch (_) {}
+      const gameScreen = document.getElementById('screen-game');
+      if (container && gameScreen && gameScreen.classList.contains('active') && !document.pointerLockElement && e.button === 0) {
+        try {
+          container.requestPointerLock();
+        } catch (_) {}
       }
 
-      if (e.button === 0) { // Left Click = Fire
+      if (e.button === 0) {
         this.fire = true;
-      } else if (e.button === 2) { // Right Click = Aim
+      } else if (e.button === 2) {
         e.preventDefault();
         this.aim = true;
       }
@@ -106,9 +133,14 @@ class InputManager {
       if (e.button === 2) this.aim = false;
     });
 
-    window.addEventListener('contextmenu', (e) => e.preventDefault());
+    window.addEventListener('contextmenu', (e) => {
+      const gameScreen = document.getElementById('screen-game');
+      if (gameScreen && gameScreen.classList.contains('active')) {
+        e.preventDefault();
+      }
+    });
 
-    // Mouse move handling (both pointer lock and drag-to-look)
+    // Mouse move handling (pointer lock and drag-to-look fallback)
     window.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement) {
         this.lookDeltaX += e.movementX;
@@ -118,10 +150,23 @@ class InputManager {
         const dy = e.clientY - mouseLastY;
         mouseLastX = e.clientX;
         mouseLastY = e.clientY;
-        this.lookDeltaX += dx * 1.4;
-        this.lookDeltaY += dy * 1.4;
+        this.lookDeltaX += dx * 1.3;
+        this.lookDeltaY += dy * 1.3;
       }
     });
+  }
+
+  syncMovementFromKeys() {
+    let forward = 0;
+    let right = 0;
+
+    if (this.activeKeys.has('KeyW') || this.activeKeys.has('ArrowUp')) forward += 1;
+    if (this.activeKeys.has('KeyS') || this.activeKeys.has('ArrowDown')) forward -= 1;
+    if (this.activeKeys.has('KeyD') || this.activeKeys.has('ArrowRight')) right += 1;
+    if (this.activeKeys.has('KeyA') || this.activeKeys.has('ArrowLeft')) right -= 1;
+
+    this.moveForward = forward;
+    this.moveRight = right;
   }
 
   setupMobileControls() {
@@ -131,9 +176,10 @@ class InputManager {
 
     if (!joyZone || !lookZone) return;
 
-    // Joystick Touch
+    // Joystick Touch with robust tracking
     joyZone.addEventListener('touchstart', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const touch = e.changedTouches[0];
       this.touchJoystickId = touch.identifier;
       const rect = joyZone.getBoundingClientRect();
@@ -146,6 +192,7 @@ class InputManager {
 
     joyZone.addEventListener('touchmove', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
         if (touch.identifier === this.touchJoystickId) {
@@ -161,16 +208,17 @@ class InputManager {
           this.touchJoystickId = null;
           this.moveForward = 0;
           this.moveRight = 0;
-          if (joyKnob) joyKnob.style.transform = `translate(0px, 0px)`;
+          if (joyKnob) joyKnob.style.transform = 'translate(0px, 0px)';
           break;
         }
       }
     };
-    joyZone.addEventListener('touchend', endJoystick);
-    joyZone.addEventListener('touchcancel', endJoystick);
+    joyZone.addEventListener('touchend', endJoystick, { passive: false });
+    joyZone.addEventListener('touchcancel', endJoystick, { passive: false });
 
     // Look / Drag camera touch zone
     lookZone.addEventListener('touchstart', (e) => {
+      e.preventDefault();
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
         if (this.touchLookId === null) {
@@ -179,9 +227,10 @@ class InputManager {
           break;
         }
       }
-    }, { passive: true });
+    }, { passive: false });
 
     lookZone.addEventListener('touchmove', (e) => {
+      e.preventDefault();
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
         if (touch.identifier === this.touchLookId) {
@@ -193,7 +242,7 @@ class InputManager {
           break;
         }
       }
-    }, { passive: true });
+    }, { passive: false });
 
     const endLook = (e) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
@@ -203,8 +252,8 @@ class InputManager {
         }
       }
     };
-    lookZone.addEventListener('touchend', endLook);
-    lookZone.addEventListener('touchcancel', endLook);
+    lookZone.addEventListener('touchend', endLook, { passive: false });
+    lookZone.addEventListener('touchcancel', endLook, { passive: false });
 
     // Mobile Action Buttons bindings
     this.bindButton('btn-fire', (down) => { this.fire = down; });
@@ -232,13 +281,21 @@ class InputManager {
       callback(false);
     }, { passive: false });
 
+    el.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      callback(false);
+    }, { passive: false });
+
     el.addEventListener('mousedown', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       callback(true);
     });
 
     el.addEventListener('mouseup', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       callback(false);
     });
   }

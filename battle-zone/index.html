@@ -226,6 +226,12 @@
     // Menu Helper Functions
     function startGameMission(lvl) {
       try {
+        // Unlock Web Audio context immediately on click / user touch
+        if (window.audio && typeof window.audio.init === 'function') {
+          window.audio.init();
+          window.audio.resume();
+        }
+
         if (!window.gameInstance && typeof window.initBattleZone === 'function') {
           window.initBattleZone();
         }

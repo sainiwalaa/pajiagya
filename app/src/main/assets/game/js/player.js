@@ -371,6 +371,12 @@ class PlayerController {
     this.isReloading = true;
     this.reloadTimer = this.equippedWeapon.reloadDuration;
     window.audio.playReload();
+    if (window.uiManager) {
+      window.uiManager.showNotification('🔄 RELOADING...');
+    }
+    if (window.audio && typeof window.audio.speakAnnouncement === 'function') {
+      window.audio.speakAnnouncement("Reloading!", 'military');
+    }
   }
 
   switchWeapon(slot) {
@@ -406,6 +412,10 @@ class PlayerController {
 
     this.health = Math.max(0, this.health - amount);
     window.audio.playHitMarker(false);
+
+    if (window.uiManager) {
+      window.uiManager.showNotification('⚠️ TAKING FIRE FROM ' + attackerName.toUpperCase() + '!');
+    }
 
     if (this.health <= 0) {
       this.die(attackerName);

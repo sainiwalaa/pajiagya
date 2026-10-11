@@ -539,3 +539,104 @@ body, html {
   font-size: 10px;
   color: #ffd54f;
 }
+
+/* RESPONSIVE DESIGN & MOBILE TOUCH LAYOUT */
+@media (max-width: 768px) {
+  .logo-title {
+    font-size: 18px;
+    letter-spacing: 1px;
+  }
+  .logo-badge {
+    font-size: 16px;
+    padding: 4px 8px;
+  }
+  .player-profile-pill {
+    font-size: 12px;
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  .hud-top {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+  }
+  .objective-box {
+    max-width: 170px;
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  .minimap-box {
+    width: 75px;
+    height: 75px;
+  }
+  .player-status-card {
+    width: 160px;
+    padding: 6px 8px;
+  }
+  #joystick-zone {
+    width: 110px;
+    height: 110px;
+    bottom: 20px;
+    left: 15px;
+  }
+  #joystick-knob {
+    width: 44px;
+    height: 44px;
+  }
+  .action-cluster {
+    grid-template-columns: repeat(3, 44px);
+    gap: 8px;
+  }
+  .action-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 10px;
+  }
+  #btn-fire {
+    width: 96px;
+    height: 48px;
+    font-size: 13px;
+  }
+  .powers-cluster {
+    right: 10px;
+    top: 25%;
+  }
+  .power-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 14px;
+  }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .menu-header {
+    margin-bottom: 6px;
+  }
+  .menu-center {
+    gap: 8px;
+    max-width: 320px;
+  }
+  .btn-primary {
+    padding: 10px 16px;
+    font-size: 15px;
+  }
+  .btn-secondary {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .hud-bottom {
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+  }
+  #joystick-zone {
+    bottom: 10px;
+    left: 10px;
+    width: 100px;
+    height: 100px;
+  }
+  #joystick-knob {
+    width: 40px;
+    height: 40px;
+  }
+}

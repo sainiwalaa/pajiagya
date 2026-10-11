@@ -201,6 +201,11 @@ class EnemyBot {
       if (window.gameInstance && window.gameInstance.player) {
         window.gameInstance.player.takeDamage(this.damage, this.name);
       }
+    } else {
+      // Near miss bullet sound / warning
+      if (window.audio && typeof window.audio.playHitMarker === 'function') {
+        // Bullet whiz
+      }
     }
 
     // Visual muzzle flash tracer toward player

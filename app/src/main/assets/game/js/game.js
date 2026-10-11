@@ -213,7 +213,11 @@ class BattleZoneGame {
     // Close open modals and show in-game HUD
     document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
     window.uiManager.showScreen('screen-game');
-    window.uiManager.showNotification(`Loaded ${mission.title}! Ready for combat.`);
+    window.uiManager.showNotification(`MISSION ${mission.level}: ${mission.title.toUpperCase()}`);
+
+    if (window.audio && typeof window.audio.speakAnnouncement === 'function') {
+      window.audio.speakAnnouncement("Mission started. Stay alert!", 'alert');
+    }
 
     if (!wasRunning) {
       this.loop();
@@ -430,7 +434,10 @@ class BattleZoneGame {
   }
 
   onEnemyEliminated(bot, isHeadshot) {
-    window.uiManager.showNotification(`Eliminated ${bot.name} ${isHeadshot ? '[HEADSHOT!]' : ''} (+100 XP)`);
+    window.uiManager.showNotification(`ELIMINATED ${bot.name.toUpperCase()} ${isHeadshot ? '[HEADSHOT!]' : ''} (+100 XP)`);
+    if (window.audio && typeof window.audio.speakAnnouncement === 'function') {
+      window.audio.speakAnnouncement(isHeadshot ? "Headshot! Enemy eliminated." : "Enemy eliminated.", 'alert');
+    }
     window.missionManager.updateObjective('kills', 1);
     this.checkMissionStatus();
   }
@@ -442,6 +449,10 @@ class BattleZoneGame {
       window.saveSystem.unlockLevel(this.currentLevel + 1);
       window.saveSystem.completeMission(mission.id);
 
+      if (window.audio && typeof window.audio.speakAnnouncement === 'function') {
+        window.audio.speakAnnouncement("Winner Winner Chicken Dinner! Mission accomplished.", 'military');
+      }
+
       setTimeout(() => {
         window.audio.playPowerActivation();
         window.uiManager.showMissionComplete(mission, mission.rewards.xp, mission.rewards.coins);
@@ -450,6 +461,9 @@ class BattleZoneGame {
   }
 
   onPlayerDied(attackerName) {
+    if (window.audio && typeof window.audio.speakAnnouncement === 'function') {
+      window.audio.speakAnnouncement("You are eliminated.", 'alert');
+    }
     setTimeout(() => {
       window.uiManager.showGameOver(attackerName);
     }, 800);

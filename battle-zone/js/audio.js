@@ -235,6 +235,40 @@ class AudioManager {
     osc.start(now);
     osc.stop(now + 0.3);
   }
+
+  speakAnnouncement(text, tone = 'military') {
+    if (this.muted) return;
+    try {
+      this.resume();
+
+      // Audio cue beeps for military radio effect
+      if (this.ctx) {
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(tone === 'alert' ? 1200 : 880, now);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+
+      // Web Speech API Voice synthesis
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis) {
+        window.speechSynthesis.cancel(); // clear queue for fresh action announcement
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.15;
+        utterance.pitch = 0.95;
+        utterance.volume = this.volume;
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch (e) {
+      console.warn("Announcement error:", e);
+    }
+  }
 }
 
 window.audio = new AudioManager();
